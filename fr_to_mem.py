@@ -11,7 +11,7 @@ from siegert import nu_0
 # Simulation Parameters
 sim_params = {'dt_noise': 1,
               'mean_I': -70,
-              'std_I': 55.0,
+              'std_I': 100.0,
               'simtime': 300000,
               'seed': 7}
 
@@ -24,7 +24,7 @@ neuron_params = {"C_m":1.0,
 
 # mean and variance membrane
 mean_mem = sim_params['mean_I']
-std_theo = (sim_params['std_I']/np.sqrt(sim_params['dt_noise']))/neuron_params["C_m"] * np.sqrt(sim_params['dt_noise'] * (neuron_params["tau_m"]/2))
+std_theo = (sim_params['std_I'])/neuron_params["C_m"] * np.sqrt(sim_params['dt_noise'] * (neuron_params["tau_m"]/2))
 
 # # Components
 outer_bound_top = (neuron_params["V_th"] - mean_mem)/std_theo
@@ -42,6 +42,7 @@ fr = 1/iti*1000
 
 fr_siegert = nu_0(neuron_params['tau_m'],neuron_params['t_ref'],
                neuron_params['V_th'],neuron_params['V_reset'], mean_mem, std_theo)*1000
+
 
 # %% Simulating
 # Trun off errors
@@ -121,9 +122,11 @@ def simulate_fr(sim_params, neuron_params):
 
 def theory_vs_simulation(sim_params,neuron_params):
 
+    sim_params['std_I'] = sim_params['std_I']/np.sqrt(sim_params['dt_noise'])
+
     # Theoretical
     mean_mem = sim_params['mean_I']
-    std_theo = (sim_params['std_I']/np.sqrt(sim_params['dt_noise']))/neuron_params["C_m"] * np.sqrt(sim_params['dt_noise'] * neuron_params["tau_m"]/2)
+    std_theo = (sim_params['std_I'])/neuron_params["C_m"] * np.sqrt(sim_params['dt_noise'] * neuron_params["tau_m"]/2)
     theo_fr = nu_0(neuron_params['tau_m'],neuron_params['t_ref'],
                    neuron_params['V_th'],neuron_params['V_reset'], mean_mem, std_theo)*1000
 
