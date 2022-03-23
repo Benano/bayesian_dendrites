@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import nest
 import scipy.integrate as integrate
 from siegert import nu_0
+import scipy
 
 # %% Theory vs Simulation
 def simulate_fr(sim_params, neuron_params):
@@ -42,7 +43,6 @@ def simulate_fr(sim_params, neuron_params):
 def theory_fr(sim_params,neuron_params):
     ''' Calculate the theoretical firing rate for a LIF neuron.'''
 
-    sim_params['std_I'] = sim_params['std_I']/sim_params['dt_noise']
     mean_mem = sim_params['mean_I']
     std_mem = (sim_params['std_I'])/neuron_params["C_m"] * np.sqrt(sim_params['dt_noise'] * neuron_params["tau_m"]/2)
 
@@ -68,29 +68,60 @@ def theory_fr(sim_params,neuron_params):
 
     return firing_rate
 
+def theory_variance(sim_params,neuron_params):
+
+    # Mean and std of membrane voltage
+    mean_mem = sim_params['mean_I']
+    std_mem = (sim_params['std_I'])/neuron_params["C_m"] * np.sqrt(sim_params['dt_noise'] * neuron_params["tau_m"]/2)
+
+    # Firing Rate
+    fr = theory_fr(sim_params, neuron_params)
+
+    # Bounds
+    outer_bound_top = (neuron_params["V_th"] - mean_mem)/std_mem
+    outer_bound_bottom = (neuron_params["V_reset"] - mean_mem)/std_mem
+
+    # Functions
+    f = lambda y, x: np.exp(x**2) * np.exp(y**2) * (1 + scipy.special.erf(y))**2
+
+    # Integral
+    integral = integrate.dblquad(f, outer_bound_bottom, outer_bound_top, lambda x: -5, lambda x: x)
+
+    # Variance
+    variance = fr**2 + 2 * np.pi * integral[0]
+
+    return variance
+
 def theory_vs_simulation(sim_params,neuron_params):
     '''Compare theory to simulation.'''
-
-    # Theoretical
-    theo_fr = theory_fr(sim_params, neuron_params)
 
     # Simulation
     sim_fr = simulate_fr(sim_params, neuron_params)
 
-    return theo_fr, sim_fr
+    # Theoretical
+    sim_params['std_I'] = sim_params['std_I']/sim_params['dt_noise']
+    theo_fr = theory_fr(sim_params, neuron_params)
+    theo_var = theory_variance(sim_params, neuron_params)
+
+    return theo_fr, theo_var, sim_fr
 
 def run_simulation(I_std_range):
-    theo_rec = []
-    sim_rec = []
+    fr_theo_rec = []
+    fr_sim_rec = []
+    var_theo_rec = []
 
     for I_std in I_std_range:
         print(I_std)
         sim_params['std_I'] = I_std
-        theo_fr, sim_fr = theory_vs_simulation(sim_params,neuron_params)
-        theo_rec.append(theo_fr)
-        sim_rec.append(sim_fr)
+        theo_fr, theo_var, sim_fr = theory_vs_simulation(sim_params,neuron_params)
 
-    return theo_rec, sim_rec
+        # Recording
+        fr_theo_rec.append(theo_fr)
+        var_theo_rec.append(theo_var)
+        print(theo_var)
+        fr_sim_rec.append(sim_fr)
+
+    return fr_theo_rec, var_theo_rec, fr_sim_rec
 
 if __name__ == "__main__":
 
@@ -112,13 +143,20 @@ if __name__ == "__main__":
 
     # Current input
     I_stds = np.linspace(0,50,50)
-    theo_rec, sim_rec = run_simulation(I_stds)
+    fr_theo_rec, var_theo_rec, fr_sim_rec = run_simulation(I_stds)
 
     # %% Figure
     alpha = 0.7
     fig, ax  = plt.subplots()
-    ax.plot(I_stds,theo_rec,label='theoretical',color='k',alpha=alpha)
-    ax.plot(I_stds, sim_rec,label='simulation',color='r',alpha=alpha)
-    ax.set(ylabel='Firing Rate',xlabel='Current std (herpes)')
+    ax.plot(I_stds, fr_theo_rec, label='theoretical', color='k',alpha=alpha)
+    ax.plot(I_stds, fr_sim_rec, label='simulation',color='r',alpha=alpha)
+    ax.set(ylabel='Firing Rate',xlabel='Current std')
     ax.legend()
+
+    alpha = 0.7
+    fig, ax  = plt.subplots()
+    ax.plot(var_theo_rec, label='theoretical', color='k',alpha=alpha)
+    ax.set(ylabel='variance',xlabel='Current std')
+    ax.legend()
+
     plt.show()
