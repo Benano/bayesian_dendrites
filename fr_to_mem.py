@@ -7,7 +7,7 @@ from siegert import nu_0
 import scipy
 
 # %% Theory vs Simulation
-def simulate_fr(sim_params, neuron_params):
+def simulate_fr_var(sim_params, neuron_params):
     '''Simulate the firing rate of a neuron using the nest simulator.'''
 
     # dt noise correction
@@ -40,77 +40,56 @@ def simulate_fr(sim_params, neuron_params):
     nest.Simulate(sim_params['simtime'])
 
     # Firing Rate
-    firing_rate = spikedetector.n_events/sim_params['simtime']*1000
-
-    # Firing Rate
-    return firing_rate
-
-def theory_fr(sim_params,neuron_params):
-    ''' Calculate the theoretical firing rate for a LIF neuron.'''
-
-    if sim_params['theo'] == 'siegert':
-        firing_rate = nu_0(neuron_params['tau_m'],neuron_params['t_ref'],
-                           neuron_params['V_th'],neuron_params['V_reset'], sim_params['mean_mem'], sim_params['std_mem'])*1000
-
-
-    elif sim_params['theo'] == 'brunel':
-        ## Components
-        outer_bound_top = (neuron_params["V_th"] - sim_params["mean_mem"])/sim_params['std_mem']
-        outer_bound_bottom = (neuron_params["V_reset"] - sim_params['mean_mem'])/sim_params['std_mem']
-        outer = lambda x: np.exp(x**2)
-        inner = lambda y: np.exp(-y**2)
-        tau_ref = neuron_params["t_ref"]
-        tau_m = neuron_params["tau_m"]
-
-        # Function - Equation 21 from Brunel 2000
-        f = lambda x: np.exp(x**2) * (1 + scipy.special.erf(x))
-        integral = integrate.quad(f, outer_bound_bottom, outer_bound_top)
-        iti = tau_ref + tau_m * np.sqrt(np.pi) * integral[0]
-        firing_rate = 1/iti*1000
-
-    return firing_rate
-
-def theory_variance(sim_params,neuron_params):
-
-    # Firing Rate
-    fr = theory_fr(sim_params, neuron_params)
-
-    # Bounds
-    outer_bound_top = (neuron_params["V_th"] - sim_params["mean_mem"])/sim_params['std_mem']
-    outer_bound_bottom = (neuron_params["V_reset"] - sim_params['mean_mem'])/sim_params['std_mem']
-
-    # Functions
-    f = lambda y, x: np.exp(x**2) * np.exp(y**2) * (1 + scipy.special.erf(y))**2
-
-    # Integral
-    integral = integrate.dblquad(f, outer_bound_bottom, outer_bound_top, lambda x: -5, lambda x: x)
+    simulated_firing_rate = spikedetector.n_events/sim_params['simtime']*1000
 
     # Variance
-    variance = fr**2 + 2 * np.pi * integral[0]
+    simulated_variance = 1
 
-    return variance
+    # Firing Rate
+    return simulated_firing_rate, simulated_variance
 
-def theory_vs_simulation(sim_params,neuron_params):
-    '''Compare theory to simulation.'''
+def theorize_fr_var(sim_params,neuron_params):
+    ''' Calculate the theoretical firing rate and variance for a LIF neuron.'''
 
-    # Simulation
-    sim_fr = simulate_fr(sim_params, neuron_params)
+    # %% Firing Rate
+    outer_bound_top = (neuron_params["V_th"] - sim_params["mean_mem"])/sim_params['std_mem']
+    outer_bound_bottom = (neuron_params["V_reset"] - sim_params['mean_mem'])/sim_params['std_mem']
+    outer = lambda x: np.exp(x**2)
+    inner = lambda y: np.exp(-y**2)
+    tau_ref = neuron_params["t_ref"]
+    tau_m = neuron_params["tau_m"]
 
-    # Theoretical
-    theo_fr = theory_fr(sim_params, neuron_params)
-    theo_var = theory_variance(sim_params, neuron_params)
+    # Function - Equation 21 from Brunel 2000
+    f = lambda x: np.exp(x**2) * (1 + scipy.special.erf(x))
+    integral = integrate.quad(f, outer_bound_bottom, outer_bound_top)
+    iti = tau_ref + tau_m * np.sqrt(np.pi) * integral[0]
+    theory_firing_rate = 1/iti*1000
 
-    return theo_fr, theo_var, sim_fr
+    # %% Variance
+
+    # Function
+    f = lambda y, x: np.exp(x**2) * np.exp(y**2) * (1 + scipy.special.erf(y))**2
+    integral = integrate.dblquad(f, outer_bound_bottom, outer_bound_top, lambda x: -5, lambda x: x)
+    theory_variance = theory_firing_rate**2 + 2 * np.pi * integral[0]
+
+    return theory_firing_rate, theory_variance
 
 def run_simulation(mem_std_range):
     fr_theo_rec = []
     fr_sim_rec = []
     var_theo_rec = []
+    var_sim_rec = []
 
     for mem_std in mem_std_range:
-        print(mem_std)
+
+        # Setting membrane std
         sim_params['std_mem'] = mem_std
-        theo_fr, theo_var, sim_fr = theory_vs_simulation(sim_params,neuron_params)
+
+        # Theory
+        theo_fr, theo_var = theorize_fr_var(sim_params, neuron_params)
+
+        # Simulation
+        sim_fr, sim_var = simulate_fr_var(sim_params, neuron_params)
 
         # Recording
         fr_theo_rec.append(theo_fr)
@@ -118,7 +97,7 @@ def run_simulation(mem_std_range):
         print(theo_var)
         fr_sim_rec.append(sim_fr)
 
-    return fr_theo_rec, var_theo_rec, fr_sim_rec
+    return fr_theo_rec, fr_sim_rec, var_theo_rec, var_sim_rec
 
 if __name__ == "__main__":
 
@@ -139,8 +118,8 @@ if __name__ == "__main__":
                     "V_th":-55.0}
 
     # Current input
-    mem_stds = np.linspace(10,200,100)
-    fr_theo_rec, var_theo_rec, fr_sim_rec = run_simulation(mem_stds)
+    mem_stds = np.linspace(10,200,10)
+    fr_theo_rec, fr_sim_rec, var_theo_rec, var_sim_rec = run_simulation(mem_stds)
 
     # %% Figure
     alpha = 0.7
