@@ -10,6 +10,11 @@ import scipy
 def simulate_fr(sim_params, neuron_params):
     '''Simulate the firing rate of a neuron using the nest simulator.'''
 
+    # dt noise correction
+    # Sigma = np.sqrt(2/(sim_params['dt_noise']*neuron_params['tau_m']))/sim_params['std_mem']
+    Sigma = np.sqrt(2/(sim_params['dt_noise']*neuron_params['tau_m'])) * neuron_params['C_m'] * sim_params['std_mem']
+    print('Sigma: ' + str(Sigma))
+
     # Simulation
     nest.set_verbosity("M_WARNING")
     nest.ResetKernel()
@@ -22,7 +27,7 @@ def simulate_fr(sim_params, neuron_params):
 
     # Noise
     noise = nest.Create("noise_generator")
-    noise.set({"std":sim_params['std_I'],"dt":sim_params['dt_noise']})
+    noise.set({"std":Sigma,"dt":sim_params['dt_noise']})
 
     # Spike Detector
     spikedetector = nest.Create("spike_recorder")
@@ -43,18 +48,15 @@ def simulate_fr(sim_params, neuron_params):
 def theory_fr(sim_params,neuron_params):
     ''' Calculate the theoretical firing rate for a LIF neuron.'''
 
-    mean_mem = sim_params['mean_I']
-    std_mem = (sim_params['std_I'])/neuron_params["C_m"] * np.sqrt(sim_params['dt_noise'] * neuron_params["tau_m"]/2)
-
     if sim_params['theo'] == 'siegert':
         firing_rate = nu_0(neuron_params['tau_m'],neuron_params['t_ref'],
-                   neuron_params['V_th'],neuron_params['V_reset'], mean_mem, std_mem)*1000
+                           neuron_params['V_th'],neuron_params['V_reset'], sim_params['mean_mem'], sim_params['std_mem'])*1000
 
 
     elif sim_params['theo'] == 'brunel':
         ## Components
-        outer_bound_top = (neuron_params["V_th"] - mean_mem)/std_mem
-        outer_bound_bottom = (neuron_params["V_reset"] - mean_mem)/std_mem
+        outer_bound_top = (neuron_params["V_th"] - sim_params["mean_mem"])/sim_params['std_mem']
+        outer_bound_bottom = (neuron_params["V_reset"] - sim_params['mean_mem'])/sim_params['std_mem']
         outer = lambda x: np.exp(x**2)
         inner = lambda y: np.exp(-y**2)
         tau_ref = neuron_params["t_ref"]
@@ -70,16 +72,12 @@ def theory_fr(sim_params,neuron_params):
 
 def theory_variance(sim_params,neuron_params):
 
-    # Mean and std of membrane voltage
-    mean_mem = sim_params['mean_I']
-    std_mem = (sim_params['std_I'])/neuron_params["C_m"] * np.sqrt(sim_params['dt_noise'] * neuron_params["tau_m"]/2)
-
     # Firing Rate
     fr = theory_fr(sim_params, neuron_params)
 
     # Bounds
-    outer_bound_top = (neuron_params["V_th"] - mean_mem)/std_mem
-    outer_bound_bottom = (neuron_params["V_reset"] - mean_mem)/std_mem
+    outer_bound_top = (neuron_params["V_th"] - sim_params["mean_mem"])/sim_params['std_mem']
+    outer_bound_bottom = (neuron_params["V_reset"] - sim_params['mean_mem'])/sim_params['std_mem']
 
     # Functions
     f = lambda y, x: np.exp(x**2) * np.exp(y**2) * (1 + scipy.special.erf(y))**2
@@ -99,20 +97,19 @@ def theory_vs_simulation(sim_params,neuron_params):
     sim_fr = simulate_fr(sim_params, neuron_params)
 
     # Theoretical
-    sim_params['std_I'] = sim_params['std_I']/sim_params['dt_noise']
     theo_fr = theory_fr(sim_params, neuron_params)
     theo_var = theory_variance(sim_params, neuron_params)
 
     return theo_fr, theo_var, sim_fr
 
-def run_simulation(I_std_range):
+def run_simulation(mem_std_range):
     fr_theo_rec = []
     fr_sim_rec = []
     var_theo_rec = []
 
-    for I_std in I_std_range:
-        print(I_std)
-        sim_params['std_I'] = I_std
+    for mem_std in mem_std_range:
+        print(mem_std)
+        sim_params['std_mem'] = mem_std
         theo_fr, theo_var, sim_fr = theory_vs_simulation(sim_params,neuron_params)
 
         # Recording
@@ -128,9 +125,9 @@ if __name__ == "__main__":
     # Simulation Parameters
     sim_params = {'dt_noise': 0.1,
                 'sim_res': 0.1,
-                'mean_I': -70,
-                'std_I': 33.0,
-                'simtime': 80000,
+                'mean_mem': -70,
+                'std_mem': 33.0,
+                'simtime': 200000,
                 'seed': 7,
                 'theo': 'siegert'}
 
@@ -142,21 +139,21 @@ if __name__ == "__main__":
                     "V_th":-55.0}
 
     # Current input
-    I_stds = np.linspace(0,50,50)
-    fr_theo_rec, var_theo_rec, fr_sim_rec = run_simulation(I_stds)
+    mem_stds = np.linspace(10,200,100)
+    fr_theo_rec, var_theo_rec, fr_sim_rec = run_simulation(mem_stds)
 
     # %% Figure
     alpha = 0.7
     fig, ax  = plt.subplots()
-    ax.plot(I_stds, fr_theo_rec, label='theoretical', color='k',alpha=alpha)
-    ax.plot(I_stds, fr_sim_rec, label='simulation',color='r',alpha=alpha)
-    ax.set(ylabel='Firing Rate',xlabel='Current std')
+    ax.plot(mem_stds, fr_theo_rec, label='theoretical', color='k',alpha=alpha)
+    ax.plot(mem_stds, fr_sim_rec, label='simulation',color='r',alpha=alpha)
+    ax.set(ylabel='Firing Rate',xlabel='Voltage std')
     ax.legend()
 
     alpha = 0.7
     fig, ax  = plt.subplots()
-    ax.plot(var_theo_rec, label='theoretical', color='k',alpha=alpha)
-    ax.set(ylabel='variance',xlabel='Current std')
+    ax.plot(mem_stds,var_theo_rec, label='theoretical', color='k',alpha=alpha)
+    ax.set(ylabel='variance',xlabel='Voltage std')
     ax.legend()
 
     plt.show()
