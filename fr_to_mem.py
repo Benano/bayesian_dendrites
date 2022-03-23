@@ -112,8 +112,8 @@ if __name__ == "__main__":
     sim_params = {'dt_noise': 0.1,
                 'sim_res': 0.1,
                 'mean_mem': -70,
-                'std_mem': 20.0,
-                'simtime': 200000,
+                'std_mem': 10.0,
+                'simtime': 100000,
                 'seed': 7,
                 'theo': 'siegert'}
 
@@ -125,7 +125,7 @@ if __name__ == "__main__":
                     "V_th":-55.0}
 
     # Voltage input
-    mem_stds = np.linspace(10,200,10)
+    mem_stds = np.linspace(10,25,100)
     fr_theo_rec, fr_sim_rec, var_theo_rec, var_sim_rec = run_simulation(mem_stds)
 
     # %% Figure
@@ -145,5 +145,9 @@ if __name__ == "__main__":
 
     plt.show()
 
-    # Look at distributions
-    simulate
+
+    # # Look at single ts
+    # fr, var, ts = simulate(sim_params, neuron_params)
+    # iti_var = np.diff(ts)
+    # plt.hist(iti_var,bins=100)
+    # plt.show()
