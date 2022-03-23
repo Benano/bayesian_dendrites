@@ -9,9 +9,6 @@ from siegert import nu_0
 def simulate_fr(sim_params, neuron_params):
     '''Simulate the firing rate of a neuron using the nest simulator.'''
 
-    # Adjust I for dt_noise
-    sim_params['std_I'] = sim_params['std_I']/sim_params['dt_noise']
-
     # Simulation
     nest.set_verbosity("M_WARNING")
     nest.ResetKernel()
