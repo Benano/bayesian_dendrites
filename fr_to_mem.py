@@ -7,7 +7,7 @@ from siegert import nu_0
 import scipy
 
 # %% Theory vs Simulation
-def simulate_fr_var(sim_params, neuron_params):
+def simulate(sim_params, neuron_params):
     '''Simulate the firing rate of a neuron using the nest simulator.'''
 
     # dt noise correction
@@ -42,13 +42,19 @@ def simulate_fr_var(sim_params, neuron_params):
     # Firing Rate
     simulated_firing_rate = spikedetector.n_events/sim_params['simtime']*1000
 
+    # Spike Data
+    dSD = nest.GetStatus(spikedetector,keys="events")[0]
+    evs = dSD["senders"]
+    ts = dSD["times"]
+    ts = ts.astype('int')
+
     # Variance
-    simulated_variance = 1
+    simulated_variance = np.var(np.diff(ts))
 
     # Firing Rate
-    return simulated_firing_rate, simulated_variance
+    return simulated_firing_rate, simulated_variance, ts
 
-def theorize_fr_var(sim_params,neuron_params):
+def theorize(sim_params,neuron_params):
     ''' Calculate the theoretical firing rate and variance for a LIF neuron.'''
 
     # %% Firing Rate
@@ -86,16 +92,17 @@ def run_simulation(mem_std_range):
         sim_params['std_mem'] = mem_std
 
         # Theory
-        theo_fr, theo_var = theorize_fr_var(sim_params, neuron_params)
+        theo_fr, theo_var = theorize(sim_params, neuron_params)
 
         # Simulation
-        sim_fr, sim_var = simulate_fr_var(sim_params, neuron_params)
+        sim_fr, sim_var, ts = simulate(sim_params, neuron_params)
 
         # Recording
         fr_theo_rec.append(theo_fr)
-        var_theo_rec.append(theo_var)
-        print(theo_var)
         fr_sim_rec.append(sim_fr)
+        var_theo_rec.append(theo_var)
+        var_sim_rec.append(sim_var)
+        print(theo_var)
 
     return fr_theo_rec, fr_sim_rec, var_theo_rec, var_sim_rec
 
@@ -105,7 +112,7 @@ if __name__ == "__main__":
     sim_params = {'dt_noise': 0.1,
                 'sim_res': 0.1,
                 'mean_mem': -70,
-                'std_mem': 33.0,
+                'std_mem': 20.0,
                 'simtime': 200000,
                 'seed': 7,
                 'theo': 'siegert'}
@@ -117,7 +124,7 @@ if __name__ == "__main__":
                     "tau_m":20.0,
                     "V_th":-55.0}
 
-    # Current input
+    # Voltage input
     mem_stds = np.linspace(10,200,10)
     fr_theo_rec, fr_sim_rec, var_theo_rec, var_sim_rec = run_simulation(mem_stds)
 
@@ -132,7 +139,11 @@ if __name__ == "__main__":
     alpha = 0.7
     fig, ax  = plt.subplots()
     ax.plot(mem_stds,var_theo_rec, label='theoretical', color='k',alpha=alpha)
+    ax.plot(mem_stds,var_sim_rec, label='simulated', color='red',alpha=alpha)
     ax.set(ylabel='variance',xlabel='Voltage std')
     ax.legend()
 
     plt.show()
+
+    # Look at distributions
+    simulate
