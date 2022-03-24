@@ -1,4 +1,6 @@
-# %% Imports
+"""A small script for comparing theory to simulation."""
+
+# Imports
 import numpy as np
 import matplotlib.pyplot as plt
 import nest
@@ -8,8 +10,7 @@ import scipy
 
 # %% Theory vs Simulation
 def simulate(sim_params, neuron_params):
-    '''Simulate the firing rate of a neuron using the nest simulator.'''
-
+    """Simulate the firing rate of a neuron using the nest simulator."""
     # dt noise correction
     Sigma = np.sqrt(2/(sim_params['dt_noise']*neuron_params['tau_m'])) * \
         neuron_params['C_m'] * sim_params['std_mem']
@@ -54,8 +55,7 @@ def simulate(sim_params, neuron_params):
 
 
 def theorize(sim_params, neuron_params):
-    ''' Calculate the theoretical firing rate and variance for a LIF neuron.'''
-
+    """Calculate the theoretical firing rate and variance for a LIF neuron."""
     # %% Firing Rate based on Brunel
     def f(x): return np.exp(x**2) * (1 + scipy.special.erf(x))
 
@@ -88,8 +88,7 @@ def theorize(sim_params, neuron_params):
 
 
 def run_simulation(mem_stds):
-    '''Run the simulation for a range of membrane voltage stds'''
-
+    """Run the simulation for a range of membrane voltage stds."""
     # Lists
     fr_theo_rec = []
     fr_sim_rec = []
