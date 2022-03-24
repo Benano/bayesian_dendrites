@@ -102,7 +102,6 @@ def run_simulation(mem_std_range):
         fr_sim_rec.append(sim_fr)
         var_theo_rec.append(theo_var)
         var_sim_rec.append(sim_var)
-        print(theo_var)
 
     return fr_theo_rec, fr_sim_rec, var_theo_rec, var_sim_rec
 
@@ -118,33 +117,34 @@ if __name__ == "__main__":
                 'theo': 'siegert'}
 
     # Neuron Parameter
-    neuron_params = {"C_m":1.0,
-                    "t_ref":2.0,
-                    "V_reset":-70.0,
-                    "tau_m":20.0,
-                    "V_th":-55.0}
+    neuron_params = {"C_m": 1.0,
+                    "t_ref": 2.0,
+                    "V_reset": -70.0,
+                    "tau_m": 20.0,
+                    "V_th": -55.0}
 
     # Voltage input
-    mem_stds = np.linspace(10,25,100)
+    mem_stds = np.linspace(6, 25, 100)
+
+    # Running Simulation
     fr_theo_rec, fr_sim_rec, var_theo_rec, var_sim_rec = run_simulation(mem_stds)
 
-    # %% Figure
+    # Plotting
     alpha = 0.7
     fig, ax  = plt.subplots()
-    ax.plot(mem_stds, fr_theo_rec, label='theoretical', color='k',alpha=alpha)
+    ax.plot(mem_stds, fr_theo_rec, label='theory', color='k',alpha=alpha)
     ax.plot(mem_stds, fr_sim_rec, label='simulation',color='r',alpha=alpha)
-    ax.set(ylabel='Firing Rate',xlabel='Voltage std')
+    ax.set(ylabel='Firing Rate',xlabel='Voltage STD')
     ax.legend()
 
     alpha = 0.7
     fig, ax  = plt.subplots()
-    ax.plot(mem_stds,var_theo_rec, label='theoretical', color='k',alpha=alpha)
-    ax.plot(mem_stds,var_sim_rec, label='simulated', color='red',alpha=alpha)
-    ax.set(ylabel='variance',xlabel='Voltage std')
+    ax.plot(mem_stds, var_theo_rec, label='theory', color='k', alpha=alpha)
+    ax.plot(mem_stds, var_sim_rec, label='simulation', color='red', alpha=alpha)
+    ax.set(ylabel='Variance', xlabel='Voltage STD')
     ax.legend()
 
     plt.show()
-
 
     # # Look at single ts
     # fr, var, ts = simulate(sim_params, neuron_params)
