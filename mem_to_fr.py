@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import nest
 import scipy.integrate as integrate
 import scipy
+from tqdm import tqdm
 
 
 # %% Theory vs Simulation
@@ -40,7 +41,7 @@ def simulate(sim_params, neuron_params):
     nest.Simulate(sim_params['simtime'])
 
     # Firing Rate
-    simulated_firing_rate = spikedetector.n_events/sim_params['simtime']*1000
+    fr_sim = spikedetector.n_events/sim_params['simtime']*1000
 
     # Spike Data
     dSD = nest.GetStatus(spikedetector, keys="events")[0]
@@ -48,10 +49,10 @@ def simulate(sim_params, neuron_params):
     ts = ts.astype('int')
 
     # Variance
-    simulated_variance = np.var(np.diff(ts))
+    var_sim = np.var(np.diff(ts))
 
     # Firing Rate
-    return simulated_firing_rate, simulated_variance, ts
+    return fr_sim, var_sim, ts
 
 
 def theorize(sim_params, neuron_params):
@@ -67,7 +68,7 @@ def theorize(sim_params, neuron_params):
 
     # Iti
     integral = integrate.quad(f, outer_bottom, outer_top)
-    iti = neuron_params['tau_ref'] + sim_params['tau_m'] * np.sqrt(np.pi) * \
+    iti = neuron_params['t_ref'] + neuron_params['tau_m'] * np.sqrt(np.pi) * \
         integral[0]
 
     # Firing Rate
@@ -87,18 +88,21 @@ def theorize(sim_params, neuron_params):
     return fr, var
 
 
-def run_simulation(mem_stds):
+def run(sim_params, neuron_params):
     """Run the simulation for a range of membrane voltage stds."""
+    # Membrane stds
+    stds = np.linspace(*sim_params['stds'])
+
     # Lists
     fr_theo_rec = []
     fr_sim_rec = []
     var_theo_rec = []
     var_sim_rec = []
 
-    for mem_std in mem_stds:
+    for std in tqdm(stds):
 
         # Setting membrane std
-        sim_params['std_mem'] = mem_std
+        sim_params['std_mem'] = std
 
         # Theory
         theo_fr, theo_var = theorize(sim_params, neuron_params)
@@ -112,7 +116,7 @@ def run_simulation(mem_stds):
         var_theo_rec.append(theo_var)
         var_sim_rec.append(sim_var)
 
-    return fr_theo_rec, fr_sim_rec, var_theo_rec, var_sim_rec
+    return fr_theo_rec, fr_sim_rec, var_theo_rec, var_sim_rec, stds
 
 
 if __name__ == "__main__":
@@ -123,6 +127,7 @@ if __name__ == "__main__":
                   'mean_mem': -70,
                   'std_mem': 10.0,
                   'simtime': 100000,
+                  'stds': [6, 25, 100],
                   'seed': 7}
 
     # Neuron Parameter
@@ -132,24 +137,21 @@ if __name__ == "__main__":
                      "tau_m": 20.0,
                      "V_th": -55.0}
 
-    # Voltage input
-    mem_stds = np.linspace(6, 25, 100)
-
     # Running Simulation
-    fr_theo, fr_sim, var_theo, var_sim = run_simulation(mem_stds)
+    fr_theo, fr_sim, var_theo, var_sim, stds = run(sim_params, neuron_params)
 
     # Plotting
     alpha = 0.7
     fig, ax = plt.subplots()
-    ax.plot(mem_stds, fr_theo, label='theory', color='k', alpha=alpha)
-    ax.plot(mem_stds, fr_sim, label='simulation', color='r', alpha=alpha)
+    ax.plot(stds, fr_theo, label='theory', color='k', alpha=alpha)
+    ax.plot(stds, fr_sim, label='simulation', color='r', alpha=alpha)
     ax.set(ylabel='Firing Rate', xlabel='Voltage STD')
     ax.legend()
 
     alpha = 0.7
     fig, ax = plt.subplots()
-    ax.plot(mem_stds, var_theo, label='theory', color='k', alpha=alpha)
-    ax.plot(mem_stds, var_sim, label='simulation', color='red', alpha=alpha)
+    ax.plot(stds, var_theo, label='theory', color='k', alpha=alpha)
+    ax.plot(stds, var_sim, label='simulation', color='red', alpha=alpha)
     ax.set(ylabel='Variance', xlabel='Voltage STD')
     ax.legend()
 
