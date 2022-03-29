@@ -35,7 +35,7 @@ def simulate(sim_params, neuron_params):
 
     # Multimeter
     multimeter = nest.Create("multimeter")
-    nest.SetStatus(multimeter, {"record_from":["V_m"]})
+    nest.SetStatus(multimeter, {"record_from": ["V_m"]})
 
     # Connections
     nest.Connect(noise, lif_neuron)
@@ -59,16 +59,20 @@ def simulate(sim_params, neuron_params):
     mem_std = np.std(Vms)
 
     # # Distribution of membrane potential
-    # def g(x): return np.exp(-((x-sim_params['mean_mem'])/sim_params['std_mem'])**2/2)
-    # def h(x): return np.exp(((x-sim_params['mean_mem'])/sim_params['std_mem'])**2/2)
+    # def g(x): return np.exp(-((x-sim_params['mean_mem'])/\
+    #                               sim_params['std_mem'])**2/2)
+    # def h(x): return np.exp(((x-sim_params['mean_mem'])/\
+    #                               sim_params['std_mem'])**2/2)
 
     # du = 0.01
     # us1 = np.arange(-10,neuron_params['V_reset'],du).tolist()
-    # us2 = np.arange(neuron_params['V_reset'],neuron_params['V_th'],du).tolist()
+    # us2 = np.arange(neuron_params['V_reset'],
+    #                 neuron_params['V_th'],du).tolist()
 
     # tail = np.array([g(u) for u in us1])
     # factor = np.array([g(u) for u in us2])
-    # integral = np.array([integrate.quad(h,u, neuron_params['V_th'])[0] for u in us2])
+    # integral = np.array([integrate.quad(h,u, neuron_params['V_th'])[0] \
+    # for u in us2])
 
     # print(tail[-1])
 
@@ -201,8 +205,3 @@ if __name__ == "__main__":
     ax.legend()
 
     plt.show()
-
-    # # Look at single ts
-    # fr, var, ts = simulate(sim_params, neuron_params)
-    # iti_var = np.diff(ts)
-    # plt.hist(iti_var,bins=100)
