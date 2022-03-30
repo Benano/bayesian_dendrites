@@ -63,7 +63,6 @@ def simulate(sim_params, neuron_params):
     #                               sim_params['std_mem'])**2/2)
     # def h(x): return np.exp(((x-sim_params['mean_mem'])/\
     #                               sim_params['std_mem'])**2/2)
-
     # du = 0.01
     # us1 = np.arange(-10,neuron_params['V_reset'],du).tolist()
     # us2 = np.arange(neuron_params['V_reset'],
@@ -110,7 +109,6 @@ def theorize(sim_params, neuron_params):
         integral[0]
 
     # Firing Rate
-    # fr = 1/iti*1000
     fr = 1/iti
 
     # %% Variance
@@ -160,12 +158,12 @@ def run(sim_params, neuron_params):
 if __name__ == "__main__":
 
     # Simulation Parameters
-    sim_params = {'dt_noise': 0.01,
-                  'sim_res': 0.01,
+    sim_params = {'dt_noise': 0.1,
+                  'sim_res': 0.1,
                   'mean_mem': 0.0,
                   'std_mem': 1.0,
                   'simtime': 100000,
-                  'stds': [2, 8.0, 30],
+                  'stds': [2, 20, 10],
                   'seed': 12}
 
     # Neuron Parameter
@@ -174,21 +172,18 @@ if __name__ == "__main__":
                      "V_reset": 0.0,
                      "tau_m": 10.0,
                      "V_th": 5.0,
-                     "E_L": 0.0,
-                     "V_m": 0.0}
+                     "E_L": 0.0}
 
     # Running Simulation
     fr_theo, fr_sim, var_theo, var_sim, stds = run(sim_params, neuron_params)
 
-# # # Plotting
+# Plotting
     alpha = 0.7
     fig, ax = plt.subplots()
     ax.plot(stds, fr_theo, label='theory', color='k', alpha=alpha)
     ax.plot(stds, fr_sim, label='simulation', color='r', alpha=alpha)
     ax.set(ylabel='Firing Rate', xlabel='Voltage STD')
     ax.legend()
-
-    plt.savefig('/Users/benano/Desktop/Plots/image.png')
 
     # Firing Rate variance
     fig, ax = plt.subplots()
@@ -205,3 +200,5 @@ if __name__ == "__main__":
     ax.legend()
 
     plt.show()
+
+    print(fr_sim)
