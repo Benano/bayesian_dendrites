@@ -1,5 +1,4 @@
 """A small script for comparing theory to simulation."""
-
 # Imports
 import numpy as np
 import matplotlib.pyplot as plt
@@ -158,20 +157,20 @@ def run(sim_params, neuron_params):
 if __name__ == "__main__":
 
     # Simulation Parameters
-    sim_params = {'dt_noise': 0.1,
-                  'sim_res': 0.1,
+    sim_params = {'dt_noise': 0.01,
+                  'sim_res': 0.01,
                   'mean_mem': 0.0,
                   'std_mem': 1.0,
                   'simtime': 100000,
-                  'stds': [2, 20, 10],
+                  'stds': [0.1, 40, 10],
                   'seed': 12}
 
     # Neuron Parameter
     neuron_params = {"C_m": 1.0,
-                     "t_ref": 0.1,
+                     "t_ref": 2,
                      "V_reset": 0.0,
                      "tau_m": 10.0,
-                     "V_th": 5.0,
+                     "V_th": 15.0,
                      "E_L": 0.0}
 
     # Running Simulation
@@ -193,10 +192,11 @@ if __name__ == "__main__":
     ax.set_ylim(0, 5000)
     ax.legend()
 
+    # Fano Factor
     fig, ax = plt.subplots()
-    fact = np.array(fr_theo)/np.array(fr_sim)
-    ax.plot(stds, fact, label='fact', color='k', alpha=alpha)
-    ax.set(ylabel='Factor', xlabel='Voltage STD')
+    ax.plot(stds, np.sqrt(np.array(var_theo))*np.array(fr_theo), label='theory', color='k', alpha=alpha)
+    ax.plot(stds, np.sqrt(np.array(var_sim))*np.array(fr_sim), label='sim', color='red', alpha=alpha)
+    ax.set(ylabel='Coefficient of Variation', xlabel='Voltage STD')
     ax.legend()
 
     plt.show()
