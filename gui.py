@@ -3,9 +3,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import nest
-import scipy.integrate as integrate
-import scipy
 from tqdm import tqdm
+import mpld3
 
 
 # %% Theory vs Simulation
@@ -135,7 +134,7 @@ def experiment(exp_params,sim_params,neuron_params):
 # Experiment Parameters
 exp_params = {'window_size': 800,
               'step_size': 100,
-              'stds': [2,4,8]}
+              'stds': [30,15]}
 
 # Simulation Parameters
 sim_params = {'dt_noise': 0.01,
@@ -144,79 +143,47 @@ sim_params = {'dt_noise': 0.01,
                 'std_mem': 3,
                 'simtime': 10000,
                 'seed': 12,
-                'neurons': 20}
+                'neurons': 50}
 
 # Neuron Parameter
 neuron_params = {"C_m": 1.0,
                     "t_ref": 0.1,
                     "V_reset": 0.0,
                     "tau_m": 10.0,
-                    "V_th": 2.0,
+                    "V_th": 15.0,
                     "E_L": 0.0}
 
 
+mu_sim, std_sim, cv_sim = experiment(exp_params, sim_params, neuron_params)
 
-mu, std, cv = experiment(exp_params, sim_params, neuron_params)
+# Plotting
+simtime = sim_params['simtime']/1000
+simtime_total = simtime*len(exp_params['stds'])
+time_windows = np.linspace(0,simtime_total,len(mu_sim))
+alpha = 0.7
 
+# Sigma Plot
+fig, ax = plt.subplots()
+for en,i in enumerate(exp_params['stds']):
+    ax.hlines([exp_params['stds'][en]],simtime*en, simtime*(en+1), label=f'sigma {en}',color='darkslateblue')
+ax.set(ylabel='Membrane voltage std', xlabel='time')
+ax.set_ylim(0,50)
+ax.legend()
 
-plt.plot(mu)
-plt.ylim(0,100)
+# ITI Plot
+fig, ax = plt.subplots()
+ax.plot(time_windows,mu_sim, label = "simulation", c='red',alpha=alpha)
+ax.fill_between(time_windows,mu_sim,mu_sim+std_sim,color='darkorange',alpha=0.2)
+ax.fill_between(time_windows,mu_sim,mu_sim-std_sim,color='darkorange',alpha=0.2)
+ax.set(ylabel='ITI', xlabel='time')
+ax.set_ylim(-50,100)
+ax.legend()
+
+# CV Plot
+fig, ax = plt.subplots()
+ax.plot(time_windows,cv_sim, label = "simulation", c='teal',alpha=alpha)
+ax.set(ylabel='CV', xlabel='time')
+ax.set_ylim(0,3)
+ax.legend()
+
 plt.show()
-
-plt.plot(cv)
-plt.ylim(0,5)
-plt.show()
-
-
-
-
-
-
-
-
-    # neuron_ts.append(n_ts)
-
-
-
-
-
-
-
-# print(neuron_ts[0])
-# print(neuron_ts[1])
-# print(neuron_ts[2])
-# print(neuron_ts[3])
-# print(neuron_ts[4])
-
-
-# %%
-
-
-
-#     # Running Simulation
-#     fr_theo, fr_sim, var_theo, var_sim, stds = run(sim_params, neuron_params)
-
-# # Plotting
-#     alpha = 0.7
-#     fig, ax = plt.subplots()
-#     ax.plot(stds, fr_theo, label='theory', color='k', alpha=alpha)
-#     ax.plot(stds, fr_sim, label='simulation', color='r', alpha=alpha)
-#     ax.set(ylabel='Firing Rate', xlabel='Voltage STD')
-#     ax.legend()
-
-#     # Firing Rate variance
-#     fig, ax = plt.subplots()
-#     ax.plot(stds, var_theo, label='theory', color='k', alpha=alpha)
-#     ax.plot(stds, var_sim, label='simulation', color='red', alpha=alpha)
-#     ax.set(ylabel='Variance', xlabel='Voltage STD')
-#     ax.set_ylim(0, 5000)
-#     ax.legend()
-
-#     # Fano Factor
-#     fig, ax = plt.subplots()
-#     ax.plot(stds, np.sqrt(np.array(var_theo))*np.array(fr_theo), label='theory', color='k', alpha=alpha)
-#     ax.plot(stds, np.sqrt(np.array(var_sim))*np.array(fr_sim), label='sim', color='red', alpha=alpha)
-#     ax.set(ylabel='Coefficient of Variation', xlabel='Voltage STD')
-#     ax.legend()
-
-#     plt.show()
