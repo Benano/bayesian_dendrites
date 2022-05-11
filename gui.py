@@ -70,6 +70,9 @@ def theorize(sim_params, neuron_params):
     outer_bottom = (neuron_params["V_reset"] - sim_params['mean_mem']) / \
         sim_params['std_mem'] / np.sqrt(2)
 
+    print(outer_top)
+    print(outer_bottom)
+
     # Iti
     integral = integrate.quad(f, outer_bottom, outer_top)
     mu = neuron_params['t_ref'] + neuron_params['tau_m'] * np.sqrt(np.pi) * \
@@ -189,6 +192,37 @@ def experiment(exp_params, sim_params, neuron_params):
     return mu_sim, std_sim, cv_sim, mu_theo, std_theo, cv_theo
 
 
+def function_to_minimize(inputs, sim_parmas, neuron_params, mu_sim, std):
+    '''Find parameters for mu_u and sigma_u.'''
+
+    # Set parameters
+    sim_params['mean_mem'] = inputs[0]
+    sim_params['std_mem'] = inputs[1]
+
+    # Compute mu and sigma
+    mu_theo, std_theo, cv  = theorize(sim_params, neuron_params)
+
+    # Instead of KL
+    loss = (mu_sim - mu_theo)**2 + (std_sim - std_theo)**2
+
+    return loss
+
+
+def find_params(sim_params, neuron_params):
+
+    # Compute ITI from sim
+    fr, var, ts, evs = simulate(sim_params, neuron_params)
+    mu_sim, std_sim, cv_sim = compute_statistics(sim_params, exp_params,
+                                                     ts, evs)
+
+    # Find minimizing parameters
+    oh_yeah = scipy.optimize.minimize(function_to_minimize(np.array([0,0]),
+                                                 (sim_parmas, neuron_params,
+                                                  mu_sim, std_sim)))
+
+    return(oh_yeah)
+
+
 # Experiment Parameters
 exp_params = {'window_size': 800,
               'step_size': 100,
@@ -198,7 +232,7 @@ exp_params = {'window_size': 800,
 # Simulation Parameters
 sim_params = {'dt_noise': 0.01,
               'sim_res': 0.01,
-              'mean_mem': 0.0,
+              'mean_mem': -70.0,
               'std_mem': 3,
               'simtime': 10000,
               'seed': 12,
@@ -207,15 +241,20 @@ sim_params = {'dt_noise': 0.01,
 # Neuron Parameter
 neuron_params = {'C_m': 1.0,
                  't_ref': 0.1,
-                 'V_reset': 0.0,
+                 'V_reset': -70.0,
                  'tau_m': 10.0,
-                 'V_th': 15.0,
-                 'E_L': 0.0}
+                 'V_th': -50.0,
+                 'E_L': -70.0}
 
 
-mu_sim, std_sim, cv_sim, mu_theo, std_theo, cv_theo = experiment(exp_params,
-                                                                 sim_params,
-                                                                 neuron_params)
+# mu_sim, std_sim, cv_sim, mu_theo, std_theo, cv_theo = experiment(exp_params,
+#                                                                  sim_params,
+#                                                                  neuron_params)
+
+
+print(find_params(sim_params, neuron_params))
+
+
 
 # Plotting
 simtime = sim_params['simtime']/1000
