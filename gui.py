@@ -104,7 +104,6 @@ def compute_statistics(sim_params, exp_params, ts, evs):
                                    exp_params["window_size"]) /
                                    exp_params["step_size"])
 
-
     iti_mu_all = np.zeros((sim_params["neurons"], exp_params['nr_windows']))
     iti_std_all = np.zeros((sim_params["neurons"], exp_params['nr_windows']))
 
@@ -198,14 +197,13 @@ def experiment(exp_params, sim_params, neuron_params):
 
 
 def f(inputs, sim_params, neuron_params, mu_sim, std_sim):
-    '''Find parameters for mu_u and sigma_u.'''
-
+    """Find parameters for mu_u and sigma_u."""
     # Set parameters
     sim_params['mean_mem'] = inputs[0]
     sim_params['std_mem'] = inputs[1]
 
     # Compute mu and sigma
-    mu_theo, std_theo, cv  = theorize(sim_params, neuron_params)
+    mu_theo, std_theo, cv = theorize(sim_params, neuron_params)
 
     # Instead of KL
     loss = (mu_sim - mu_theo)**2 + (std_sim - std_theo)**2
@@ -213,24 +211,24 @@ def f(inputs, sim_params, neuron_params, mu_sim, std_sim):
     return loss
 
 
-
 def find_params(sim_params, neuron_params):
-
+    """Find parameters."""
     # Simulate
     fr, var, ts, evs = simulate(sim_params, neuron_params)
     mu_sim = np.mean(np.diff(ts))
     std_sim = np.std(np.diff(ts))
 
     # Find minimizing parameters
-
     history = []
 
     def record_hist(xk):
         history.append(xk)
 
-    result = scipy.optimize.minimize(f,x0=np.array(sim_params['search_start']),
-                                      args=(sim_params, neuron_params, mu_sim, std_sim),
-                                      callback = record_hist)
+    result = scipy.optimize.minimize(f,
+                                     x0=np.array(sim_params['search_start']),
+                                     args=(sim_params, neuron_params,
+                                           mu_sim, std_sim),
+                                     callback=record_hist)
 
     return result, history
 
@@ -249,7 +247,7 @@ sim_params = {'dt_noise': 0.01,
               'simtime': 100000,
               'seed': 18,
               'neurons': 1,
-              'search_start':[-60,10]}
+              'search_start': [-60, 10]}
 
 # Neuron Parameter
 neuron_params = {'C_m': 1.0,
@@ -260,57 +258,59 @@ neuron_params = {'C_m': 1.0,
                  'E_L': -70.0}
 
 
-
-
 # Find optimal solution
 result, history = find_params(sim_params, neuron_params)
-
 fr, var, ts, evs = simulate(sim_params, neuron_params)
 a = np.mean(np.diff(ts))
 b = np.std(np.diff(ts))
 
+mus = np.arange(-80, -54, 0.5)
+sigmas = np.arange(5, 25, 0.5)
 
-mus = np.arange(-80,-54,0.5)
-sigmas = np.arange(5,25,0.5)
-
-loss = np.zeros((len(mus),len(sigmas)))
-for ni,i in enumerate(mus):
-   for nq,q in enumerate(sigmas):
-       loss[ni,nq] =f([i,q], sim_params, neuron_params,a,b)
+loss = np.zeros((len(mus), len(sigmas)))
+for ni, i in enumerate(mus):
+    for nq, q in enumerate(sigmas):
+        loss[ni, nq] = f([i, q], sim_params, neuron_params, a, b)
 
 
+mu_sim, std_sim, cv_sim, mu_theo, std_theo, cv_theo = experiment(exp_params,
+                                                                 sim_params,
+                                                                 neuron_params)
+
+# %% Loss Plot
 # Plotting Loss
-loss[loss>5000] = 5000
+loss[loss > 5000] = 5000
 fig, ax = plt.subplots()
-im = ax.imshow(loss, cmap='bone_r', norm=colors.LogNorm(),extent=[sigmas[0],sigmas[-1],mus[-1],mus[0]])
+im = ax.imshow(loss, cmap='bone_r', norm=colors.LogNorm(),
+               extent=[sigmas[0], sigmas[-1], mus[-1], mus[0]])
 
 # Plotting Path on Loss
 # Colors
 cmap = matplotlib.cm.get_cmap('rainbow')
 norm = matplotlib.colors.Normalize(vmin=0.0, vmax=len(history)-1)
 start = sim_params['search_start']
-for en,coords in enumerate(history[1:]):
-     stop = coords
-     y = [start[0],stop[0]]
-     x = [start[1],stop[1]]
+for en, coords in enumerate(history[1:]):
+    stop = coords
+    y = [start[0], stop[0]]
+    x = [start[1], stop[1]]
 
-     # Color
-     rgba = cmap(norm(en))
-     ax.plot(x, y, color=rgba, linewidth=3)
+    # Color
+    rgba = cmap(norm(en))
+    ax.plot(x, y, color=rgba, linewidth=3)
 
-     # Setting next start
-     start = stop
+    # Setting next start
+    start = stop
 
 # Plotting small cross on solution
 # Line
 mid = result.x
 # Top left, bottom right
-y = [mid[0]-0.2,mid[0]+0.2]
-x = [mid[1]+0.2,mid[1]-0.2]
+y = [mid[0]-0.2, mid[0]+0.2]
+x = [mid[1]+0.2, mid[1]-0.2]
 ax.plot(x, y, color='red', linewidth=1)
 # Top right, bottom left
-y = [mid[0]-0.2,mid[0]+0.2]
-x = [mid[1]-0.2,mid[1]+0.2]
+y = [mid[0]-0.2, mid[0]+0.2]
+x = [mid[1]-0.2, mid[1]+0.2]
 ax.plot(x, y, color='red', linewidth=1)
 
 # Colorbar
@@ -318,62 +318,48 @@ divider = make_axes_locatable(ax)
 cax = divider.append_axes('right', size='5%', pad=0.05)
 fig.colorbar(im, cax=cax, orientation='vertical')
 
-
 plt.show()
 
+# Plotting
+simtime = sim_params['simtime']/1000
+simtime_total = simtime*len(exp_params['stds'])
+time_windows = np.linspace(0, simtime_total, len(mu_sim))
+alpha = 0.7
 
+# Sigma Plot
+fig, ax = plt.subplots()
+for en, i in enumerate(exp_params['stds']):
+    ax.hlines([exp_params['stds'][en]], simtime*en, simtime*(en+1),
+              label=f'sigma {en}', color='darkslateblue')
+ax.set(ylabel='Membrane voltage std', xlabel='time')
+ax.set_ylim(0, 50)
+ax.legend()
 
-# f(inputs, sim_params, neuron_params, mu_sim, std_sim)
+# ITI Plot
+fig, ax = plt.subplots()
+# Simulation
+ax.plot(time_windows, mu_sim, label="simulation", c='red', alpha=alpha)
+ax.fill_between(time_windows, mu_sim, mu_sim+std_sim,
+                color='darkorange', alpha=0.2)
+ax.fill_between(time_windows, mu_sim, mu_sim-std_sim,
+                color='darkorange', alpha=0.2)
+# Theory
+ax.plot(time_windows, mu_theo, label="theory", c='k', alpha=alpha)
+ax.fill_between(time_windows, mu_theo, mu_theo+std_theo, color='grey',
+                alpha=0.2)
+ax.fill_between(time_windows, mu_theo, mu_theo-std_theo, color='grey',
+                alpha=0.2)
+# Labels
+ax.set(ylabel='ITI', xlabel='time')
+ax.set_ylim(-50, 100)
+ax.legend()
 
-# mu_sim, std_sim, cv_sim, mu_theo, std_theo, cv_theo = experiment(exp_params,
-#                                                                  sim_params,
-#                                                                  neuron_params)
+# CV Plot
+fig, ax = plt.subplots()
+ax.plot(time_windows, cv_sim, label="simulation", c='teal', alpha=alpha)
+ax.plot(time_windows, cv_theo, label="theory", c='green', alpha=alpha)
+ax.set(ylabel='CV', xlabel='time')
+ax.set_ylim(0, 3)
+ax.legend()
 
-# print(find_params(sim_params, neuron_params))
-# print(mu_sim)
-# print(std_sim)
-# print(f(input, sim_params, neuron_params, mu_sim, std_sim))
-
-# # Plotting
-# simtime = sim_params['simtime']/1000
-# simtime_total = simtime*len(exp_params['stds'])
-# time_windows = np.linspace(0, simtime_total, len(mu_sim))
-# alpha = 0.7
-
-# # Sigma Plot
-# fig, ax = plt.subplots()
-# for en, i in enumerate(exp_params['stds']):
-#     ax.hlines([exp_params['stds'][en]], simtime*en, simtime*(en+1),
-#               label=f'sigma {en}', color='darkslateblue')
-# ax.set(ylabel='Membrane voltage std', xlabel='time')
-# ax.set_ylim(0, 50)
-# ax.legend()
-
-# # ITI Plot
-# fig, ax = plt.subplots()
-# # Simulation
-# ax.plot(time_windows, mu_sim, label="simulation", c='red', alpha=alpha)
-# ax.fill_between(time_windows, mu_sim, mu_sim+std_sim,
-#                 color='darkorange', alpha=0.2)
-# ax.fill_between(time_windows, mu_sim, mu_sim-std_sim,
-#                 color='darkorange', alpha=0.2)
-# # Theory
-# ax.plot(time_windows, mu_theo, label="theory", c='k', alpha=alpha)
-# ax.fill_between(time_windows, mu_theo, mu_theo+std_theo, color='grey',
-#                 alpha=0.2)
-# ax.fill_between(time_windows, mu_theo, mu_theo-std_theo, color='grey',
-#                 alpha=0.2)
-# # Labels
-# ax.set(ylabel='ITI', xlabel='time')
-# ax.set_ylim(-50, 100)
-# ax.legend()
-
-# # CV Plot
-# fig, ax = plt.subplots()
-# ax.plot(time_windows, cv_sim, label="simulation", c='teal', alpha=alpha)
-# ax.plot(time_windows, cv_theo, label="theory", c='green', alpha=alpha)
-# ax.set(ylabel='CV', xlabel='time')
-# ax.set_ylim(0, 3)
-# ax.legend()
-
-# plt.show()
+plt.show()
