@@ -17,6 +17,9 @@ def simulate(sim_params, neuron_params):
     Sigma = np.sqrt(2/(sim_params['dt_noise']*neuron_params['tau_m'])) * \
         neuron_params['C_m'] * sim_params['std_mem']
 
+    print(sim_params)
+    print(Sigma)
+
     # Simulation
     nest.set_verbosity("M_WARNING")
     nest.ResetKernel()
@@ -199,6 +202,7 @@ def experiment(exp_params, sim_params, neuron_params):
 def f(inputs, sim_params, neuron_params, mu_sim, std_sim):
     """Find parameters for mu_u and sigma_u."""
     # Set parameters
+
     sim_params['mean_mem'] = inputs[0]
     sim_params['std_mem'] = inputs[1]
 
@@ -224,17 +228,18 @@ def find_params(sim_params, neuron_params):
     def record_hist(xk):
         history.append(xk)
 
+    bounds = scipy.optimize.Bounds([-np.inf, 0], [np.inf, np.inf])
     result = scipy.optimize.minimize(f,
                                      x0=np.array(sim_params['search_start']),
                                      args=(sim_params, neuron_params,
                                            mu_sim, std_sim),
-                                     callback=record_hist)
+                                     callback=record_hist, bounds=bounds)
 
     return result, history
 
 
 # Experiment Parameters
-exp_params = {'window_size': 10000,
+exp_params = {'window_size': 800,
               'step_size': 100,
               'stds': [30, 15],
               'nr_windows': None}
@@ -242,23 +247,33 @@ exp_params = {'window_size': 10000,
 # Simulation Parameters
 sim_params = {'dt_noise': 0.01,
               'sim_res': 0.01,
-              'mean_mem': 70.0,
-              'std_mem': 15,
-              'simtime': 100000,
+              'mean_mem': -65.0,
+              'std_mem': 20,
+              'simtime': 10000,
               'seed': 18,
-              'neurons': 1,
+              'neurons': 20,
               'search_start': [-60, 10]}
 
 # Neuron Parameter
 neuron_params = {'C_m': 1.0,
                  't_ref': 0.1,
-                 'V_reset': -70.0,
+                 'V_reset': -65.0,
                  'tau_m': 10.0,
                  'V_th': -50.0,
-                 'E_L': -70.0}
+                 'E_L': -65.0}
+
+
+# Theory vs Experiment
+mu_sim, std_sim, cv_sim, mu_theo, std_theo, cv_theo = experiment(exp_params,
+                                                                 sim_params,
+                                                                 neuron_params)
 
 
 # Find optimal solution
+sim_params['neurons'] = 1
+sim_params['simtime'] = 100000
+sim_params['std_mem'] = 20
+
 result, history = find_params(sim_params, neuron_params)
 fr, var, ts, evs = simulate(sim_params, neuron_params)
 a = np.mean(np.diff(ts))
@@ -271,11 +286,6 @@ loss = np.zeros((len(mus), len(sigmas)))
 for ni, i in enumerate(mus):
     for nq, q in enumerate(sigmas):
         loss[ni, nq] = f([i, q], sim_params, neuron_params, a, b)
-
-
-mu_sim, std_sim, cv_sim, mu_theo, std_theo, cv_theo = experiment(exp_params,
-                                                                 sim_params,
-                                                                 neuron_params)
 
 # %% Loss Plot
 # Plotting Loss
@@ -318,9 +328,8 @@ divider = make_axes_locatable(ax)
 cax = divider.append_axes('right', size='5%', pad=0.05)
 fig.colorbar(im, cax=cax, orientation='vertical')
 
-plt.show()
 
-# Plotting
+# Plotting Theory vs Simulation
 simtime = sim_params['simtime']/1000
 simtime_total = simtime*len(exp_params['stds'])
 time_windows = np.linspace(0, simtime_total, len(mu_sim))
