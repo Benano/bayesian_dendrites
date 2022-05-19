@@ -17,9 +17,6 @@ def simulate(sim_params, neuron_params):
     Sigma = np.sqrt(2/(sim_params['dt_noise']*neuron_params['tau_m'])) * \
         neuron_params['C_m'] * sim_params['std_mem']
 
-    print(sim_params)
-    print(Sigma)
-
     # Simulation
     nest.set_verbosity("M_WARNING")
     nest.ResetKernel()
@@ -239,9 +236,9 @@ def find_params(sim_params, neuron_params):
 
 
 # Experiment Parameters
-exp_params = {'window_size': 800,
+exp_params = {'window_size': 1000,
               'step_size': 100,
-              'stds': [30, 15],
+              'stds': [15, 22],
               'nr_windows': None}
 
 # Simulation Parameters
@@ -249,10 +246,10 @@ sim_params = {'dt_noise': 0.01,
               'sim_res': 0.01,
               'mean_mem': -65.0,
               'std_mem': 20,
-              'simtime': 10000,
+              'simtime': 50000,
               'seed': 18,
-              'neurons': 20,
-              'search_start': [-60, 10]}
+              'neurons': 50,
+              'search_start': [-75, 23]}
 
 # Neuron Parameter
 neuron_params = {'C_m': 1.0,
@@ -268,65 +265,66 @@ mu_sim, std_sim, cv_sim, mu_theo, std_theo, cv_theo = experiment(exp_params,
                                                                  sim_params,
                                                                  neuron_params)
 
-
 # Find optimal solution
-sim_params['neurons'] = 1
-sim_params['simtime'] = 100000
-sim_params['std_mem'] = 20
 
-result, history = find_params(sim_params, neuron_params)
-fr, var, ts, evs = simulate(sim_params, neuron_params)
-a = np.mean(np.diff(ts))
-b = np.std(np.diff(ts))
+for std in exp_params['stds']:
+    sim_params['neurons'] = 1
+    sim_params['simtime'] = 100000
+    sim_params['std_mem'] = std
 
-mus = np.arange(-80, -54, 0.5)
-sigmas = np.arange(5, 25, 0.5)
+    result, history = find_params(sim_params, neuron_params)
+    fr, var, ts, evs = simulate(sim_params, neuron_params)
+    a = np.mean(np.diff(ts))
+    b = np.std(np.diff(ts))
 
-loss = np.zeros((len(mus), len(sigmas)))
-for ni, i in enumerate(mus):
-    for nq, q in enumerate(sigmas):
-        loss[ni, nq] = f([i, q], sim_params, neuron_params, a, b)
+    mus = np.arange(-54, -80, -0.5)
+    sigmas = np.arange(5,max(exp_params['stds'])+10, 0.5)
 
-# %% Loss Plot
-# Plotting Loss
-loss[loss > 5000] = 5000
-fig, ax = plt.subplots()
-im = ax.imshow(loss, cmap='bone_r', norm=colors.LogNorm(),
-               extent=[sigmas[0], sigmas[-1], mus[-1], mus[0]])
+    loss = np.zeros((len(mus), len(sigmas)))
+    for ni, i in enumerate(mus):
+        for nq, q in enumerate(sigmas):
+            loss[ni, nq] = f([i, q], sim_params, neuron_params, a, b)
+    loss[loss > 5000] = 5000
 
-# Plotting Path on Loss
-# Colors
-cmap = matplotlib.cm.get_cmap('rainbow')
-norm = matplotlib.colors.Normalize(vmin=0.0, vmax=len(history)-1)
-start = sim_params['search_start']
-for en, coords in enumerate(history[1:]):
-    stop = coords
-    y = [start[0], stop[0]]
-    x = [start[1], stop[1]]
+    # %% Loss Plot
+    # Plotting Loss
+    fig, ax = plt.subplots()
+    im = ax.imshow(loss, cmap='bone_r', norm=colors.LogNorm(),
+                extent=[sigmas[0], sigmas[-1], mus[-1], mus[0]])
 
-    # Color
-    rgba = cmap(norm(en))
-    ax.plot(x, y, color=rgba, linewidth=3)
+    # Plotting Path on Loss
+    # Colors
+    cmap = matplotlib.cm.get_cmap('rainbow')
+    norm = matplotlib.colors.Normalize(vmin=0.0, vmax=len(history)-1)
+    start = sim_params['search_start']
+    for en, coords in enumerate(history[1:]):
+        stop = coords
+        y = [start[0], stop[0]]
+        x = [start[1], stop[1]]
 
-    # Setting next start
-    start = stop
+        # Color
+        rgba = cmap(norm(en))
+        ax.plot(x, y, color=rgba, linewidth=3)
 
-# Plotting small cross on solution
-# Line
-mid = result.x
-# Top left, bottom right
-y = [mid[0]-0.2, mid[0]+0.2]
-x = [mid[1]+0.2, mid[1]-0.2]
-ax.plot(x, y, color='red', linewidth=1)
-# Top right, bottom left
-y = [mid[0]-0.2, mid[0]+0.2]
-x = [mid[1]-0.2, mid[1]+0.2]
-ax.plot(x, y, color='red', linewidth=1)
+        # Setting next start
+        start = stop
 
-# Colorbar
-divider = make_axes_locatable(ax)
-cax = divider.append_axes('right', size='5%', pad=0.05)
-fig.colorbar(im, cax=cax, orientation='vertical')
+    # Plotting small cross on solution
+    # Line
+    mid = result.x
+    # Top left, bottom right
+    y = [mid[0]-0.2, mid[0]+0.2]
+    x = [mid[1]+0.2, mid[1]-0.2]
+    ax.plot(x, y, color='red', linewidth=1)
+    # Top right, bottom left
+    y = [mid[0]-0.2, mid[0]+0.2]
+    x = [mid[1]-0.2, mid[1]+0.2]
+    ax.plot(x, y, color='red', linewidth=1)
+
+    # Colorbar
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='vertical')
 
 
 # Plotting Theory vs Simulation
