@@ -1230,7 +1230,7 @@ if __name__ == '__main__':
                 'sim_res': 0.01,
                 'mean_mem': -65.0,
                 'std_mem': 20,
-                'simtime': 50000,
+                'simtime': 10000,
                 'seed': 18,
                 'neurons': 50,
                 'search_start': [-75, 23]}
@@ -1245,7 +1245,7 @@ if __name__ == '__main__':
 
 
     # Selecting Units
-    selected_unit_ind = session.select_units(area=area, layer=None)
+    neuron_index = session.select_units(area=area, layer=None)
 
     # Selecting Trials
 
@@ -1266,10 +1266,12 @@ if __name__ == '__main__':
     all_spikes = session.spike_time_stamps
 
     # Initialize Result Matrices
-    mu_results = np.ones((len(selected_unit_ind),len(trial_times),2)) * sec_pre_post * 1000/min_nr_spikes # Filled with maximal measurable ITI
-    std_results = np.zeros((len(selected_unit_ind),len(trial_times),2))
+
+    mu_iti = np.ones((len(neuron_index),len(trial_times),2)) * sec_pre_post * 1000/min_nr_spikes # Filled with maximal measurable ITI
+    std_iti = np.zeros((len(neuron_index),len(trial_times),2))
+
     # Neurons
-    for nn,n in enumerate(selected_unit_ind):
+    for nn,n in enumerate(neuron_index):
         unit_spikes = all_spikes[nn]
 
         # Trials
@@ -1286,25 +1288,25 @@ if __name__ == '__main__':
             if len(before_stim)>min_nr_spikes:
                 mu_iti_before = np.mean(np.diff(before_stim)/1000)
                 std_iti_before = np.std(np.diff(before_stim)/1000)
-                mu_results[nn,tn,0] = mu_iti_before
-                std_results[nn,tn,0] = std_iti_before
+                mu_iti[nn,tn,0] = mu_iti_before
+                std_iti[nn,tn,0] = std_iti_before
 
             # After
             after_stim = trial_spikes[trial_spikes>=trial_mid]
             if len(after_stim)>min_nr_spikes:
                 mu_iti_after = np.mean(np.diff(after_stim)/1000)
                 std_iti_after = np.std(np.diff(after_stim)/1000)
-                mu_results[nn,tn,1] = mu_iti_after
-                std_results[nn,tn,1] = std_iti_after
+                mu_iti[nn,tn,1] = mu_iti_after
+                std_iti[nn,tn,1] = std_iti_after
 
     # Per neuron
     neuron = 5
-    blub = mu_results[neuron,:,0]
-    blub2 = mu_results[neuron,:,1]
+    blub = mu_iti[neuron,:,0]
+    blub2 = mu_iti[neuron,:,1]
 
     remove_till = 25
-    mu_results = mu_results[:,:remove_till]
-    std_results = std_results[:,:remove_till]
+    mu_iti = mu_iti[:,:remove_till]
+    std_iti = std_iti[:,:remove_till]
 
     # plt.subplot(211)
     # plt.plot(mu_results[neuron].T,marker='o')
@@ -1314,27 +1316,41 @@ if __name__ == '__main__':
 
     # plt.show()
 
-    mu_across_trials = np.mean(mu_results,axis=1)
-    std_across_trials = np.mean(std_results,axis=1)
+    mu_iti_neurons = np.mean(mu_iti,axis=1)
+    std_iti_neurons = np.mean(std_iti,axis=1)
 
-    mu_across_neurons = np.mean(mu_across_trials,axis=0)
-    std_across_neurons = np.mean(std_across_trials,axis=0)
+    mu_iti_area = np.mean(mu_iti_neurons,axis=0)
+    std_iti_area = np.mean(std_iti_neurons,axis=0)
 
-    fig, ax = plt.subplots()
-    ax.scatter(std_across_trials[:,0],mu_across_trials[:,0],color='red')
-    ax.scatter(std_across_trials[:,1],mu_across_trials[:,1],color='blue')
-    plt.show()
+    # fig, ax = plt.subplots()
+    # ax.scatter(std_across_trials[:,0],mu_across_trials[:,0],color='red')
+    # ax.scatter(std_across_trials[:,1],mu_across_trials[:,1],color='blue')
+    # plt.show()
 
     # Finding Neuron parameters
+    # Initialize
+    mu_mem_neurons = np.zeros_like(mu_iti_neurons)
+    std_mem_neurons = np.zeros_like(std_iti_neurons)
 
-    mu = mu_across_trials[0]
-    std = std_across_trials[0]
+    for neuron in range(len(neuron_index)):
+        print('ey')
+        for pre_post in range(2):
 
-    print(mu)
-    print(std)
+           mu_iti_to_fit = mu_iti_neurons[neuron,pre_post]
+           std_iti_to_fit = std_iti_neurons[neuron,pre_post]
 
-    result, history = find_params(sim_params, neuron_params, mu[1], std[1])
-    print(result.x)
+           result, history = find_params(sim_params, neuron_params, mu_iti_to_fit, std_iti_to_fit)
+
+           mu_mem_neurons[neuron,pre_post] = result.x[0]
+           std_mem_neurons[neuron,pre_post] = result.x[1]
+
+
+
+
+    print(mu_mem_neurons)
+    print(std_mem_neurons)
+
+
 
 
 
@@ -1377,7 +1393,7 @@ if __name__ == '__main__':
     # subselecting units from a given area with required quality metrics
     # see select_units for other available selection criteria (e.g. coverage)
     # and see session.spike_data.keys() for all the available unit metrics
-    selected_unit_ind = session.select_units(area='PPC', layer=None,
+    neuron_index = session.select_units(area='PPC', layer=None,
                                              min_isolation_distance=10,
                                              max_perc_isi_spikes=0.1)
 
