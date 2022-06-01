@@ -1170,7 +1170,7 @@ if __name__ == '__main__':
     session = Session(dataset=dataset, animal_id=animal_id,
                       session_id=session_id, subfolder='')
 
-    session.load_data(load_lfp=False, use_newtrials=True)
+    session.load_data(load_lfp=True, use_newtrials=True)
 
     # get an overview of the cells recorded in the session
     print(session.get_session_overview_n_units())
@@ -1190,50 +1190,29 @@ if __name__ == '__main__':
     # and about the recording session
     session.session_data
 
-    # and this is where the spike data is
-
-    # a typical workflow include selecting trials
-    trial_numbers = session.select_trials(only_correct=False,
-                                          trial_type='Y', # audio
-                                          auditory_change=3) # large auditory change
-
-    # getting beginning and end times for every trial aligned to stimulus change
-    trial_times = session.get_aligned_times(trial_numbers,
-                                            time_before_in_s=1, # 1 sec before stim. change
-                                            time_after_in_s=2, # to 2 sec after stim. change
-                                            event='stimChange')
-
-    # binning spikes (e.g. with a 200 ms window advanced in 100ms time increments)
-    binned_spikes, spike_bin_centers = session.bin_spikes_per_trial(binsize_in_ms=200,
-                                                                    trial_times=trial_times,
-                                                                    sliding_window=True,
-                                                                    slide_by_in_ms=100)
-    # binned_spikes is a list, every element is an array of shape n_units x n_time_points
-
-
     # --- CV ---
     # Parameters
     area = 'PPC'
     trial_type = 'X'
     size_of_change = 3
     min_nr_spikes = 3
-    sec_pre_post = 2
+    sec_pre_post = 6
 
     # Experiment Parameters
     exp_params = {'window_size': 1000,
                 'step_size': 100,
-                'stds': [15, 22],
+                'stds': [22, 15],
                 'nr_windows': None}
 
     # Simulation Parameters
-    sim_params = {'dt_noise': 0.01,
-                'sim_res': 0.01,
+    sim_params = {'dt_noise': 0.005,
+                'sim_res': 0.005,
                 'mean_mem': -65.0,
                 'std_mem': 20,
                 'simtime': 10000,
                 'seed': 18,
                 'neurons': 50,
-                'search_start': [-75, 23]}
+                'search_start': [-65, 5]}
 
     # Neuron Parameter
     neuron_params = {'C_m': 1.0,
@@ -1243,6 +1222,11 @@ if __name__ == '__main__':
                     'V_th': -50.0,
                     'E_L': -65.0}
 
+    plot_params = {'resolution': 0.5,
+                   'mu_range': 10,
+                   'std_range': 10,
+                   'max_loss': 100000,
+                   'single_neuron':13}
 
     # Selecting Units
     neuron_index = session.select_units(area=area, layer=None)
@@ -1300,10 +1284,6 @@ if __name__ == '__main__':
                 std_iti[nn,tn,1] = std_iti_after
 
     # Per neuron
-    neuron = 5
-    blub = mu_iti[neuron,:,0]
-    blub2 = mu_iti[neuron,:,1]
-
     remove_till = 25
     mu_iti = mu_iti[:,:remove_till]
     std_iti = std_iti[:,:remove_till]
@@ -1316,22 +1296,15 @@ if __name__ == '__main__':
 
     # plt.show()
 
+    # Average across Trials
     mu_iti_neurons = np.mean(mu_iti,axis=1)
     std_iti_neurons = np.mean(std_iti,axis=1)
-
-    mu_iti_area = np.mean(mu_iti_neurons,axis=0)
-    std_iti_area = np.mean(std_iti_neurons,axis=0)
-
-    # fig, ax = plt.subplots()
-    # ax.scatter(std_across_trials[:,0],mu_across_trials[:,0],color='red')
-    # ax.scatter(std_across_trials[:,1],mu_across_trials[:,1],color='blue')
-    # plt.show()
 
     # Finding Neuron parameters
     # Initialize
     mu_mem_neurons = np.zeros_like(mu_iti_neurons)
     std_mem_neurons = np.zeros_like(std_iti_neurons)
-
+    loss = []
     for neuron in range(len(neuron_index)):
         print('ey')
         for pre_post in range(2):
@@ -1343,19 +1316,39 @@ if __name__ == '__main__':
 
            mu_mem_neurons[neuron,pre_post] = result.x[0]
            std_mem_neurons[neuron,pre_post] = result.x[1]
-
-
-
+           loss.append(result.fun)
 
     print(mu_mem_neurons)
     print(std_mem_neurons)
+    print(loss)
+
+    # # Plot fit for single neuron
+    # neuron = plot_params['single_neuron']
+    # if neuron:
+
+    #     for pre_post in range(2):
+    #         mu_iti_single_neuron = mu_iti_neurons[neuron,pre_post]
+    #         std_iti_single_neuron = std_iti_neurons[neuron,pre_post]
+
+    #         result, history = find_params(sim_params, neuron_params, mu_iti_single_neuron, std_iti_single_neuron)
 
 
+    #         sim_params['mean_mem'] = result.x[0]
+    #         sim_params['std_mem'] = result.x[1]
 
+    #         mu_theo, std_theo, _  = theorize(sim_params, neuron_params)
 
+    #         print(mu_theo)
+    #         print(mu_iti_single_neuron)
+    #         print(std_theo)
+    #         print(std_iti_single_neuron)
 
+    #         print(result.fun)
+    #         result = result.x
 
+    #         plot_search(sim_params, neuron_params, plot_params, mu_iti_single_neuron, std_iti_single_neuron, result, history)
 
+    #         plt.show()
 
 
     # --- FANO factor ---

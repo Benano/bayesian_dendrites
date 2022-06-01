@@ -157,12 +157,12 @@ def run(sim_params, neuron_params):
 if __name__ == "__main__":
 
     # Simulation Parameters
-    sim_params = {'dt_noise': 0.01,
-                  'sim_res': 0.01,
+    sim_params = {'dt_noise': 0.005,
+                  'sim_res': 0.005,
                   'mean_mem': 0.0,
                   'std_mem': 1.0,
                   'simtime': 100000,
-                  'stds': [0.1, 40, 10],
+                  'stds': [0.1, 40, 30],
                   'seed': 12}
 
     # Neuron Parameter
