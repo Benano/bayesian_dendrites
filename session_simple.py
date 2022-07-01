@@ -34,7 +34,7 @@ class Session():
         self.session_id = session_id
 
     def load_data(self, load_spikes=True, load_lfp=False,
-                  load_lfp_lazy=True, use_newtrials=True, load_video=False):
+                  load_lfp_lazy=False, use_newtrials=True, load_video=False):
 
         """
         :param load_spikes: if True, loads spike times
@@ -1163,26 +1163,20 @@ def select_sessions(dataset, area, min_units, min_performance=None,
 
 if __name__ == '__main__':
 
-    animal_id = '2012'
-    session_id = '2018-08-13_14-31-39'
+    animal_id = '2003'
+    session_id = '2018-02-08_15-13-56'
     dataset = 'ChangeDetectionConflict'
 
     session = Session(dataset=dataset, animal_id=animal_id,
                       session_id=session_id, subfolder='')
 
-    session.load_data(load_lfp=True, use_newtrials=True)
+    session.load_data(load_lfp=False, use_newtrials=True)
 
     # get an overview of the cells recorded in the session
     print(session.get_session_overview_n_units())
 
     # get an overview of the number of trials per type
-    # for example, the first row indicates that there are 27 correct visual trials,
-    # and if you split them based on the post-change visual orientation
-    # (nearby orientation grouped together) you have 18 and 9 trials of either type
     session.get_session_overview_trials()
-
-    # get an overview of the cells and corresponding recording channels
-    # session.get_session_overview_units_and_channels()
 
     # this is where the metadata about individual trials is
     session.trial_data
@@ -1242,85 +1236,85 @@ if __name__ == '__main__':
                                             trial_type='Y', # auditory
                                             auditory_change=3) # auditory change
 
-    trial_times = session.get_aligned_times(trial_numbers,
-                                            time_before_in_s=sec_pre_post, # sec before stim. change
-                                            time_after_in_s=sec_pre_post, # to sec after stim. change
-                                            event='stimChange')
-    # Spikes
-    all_spikes = session.spike_time_stamps
+    # trial_times = session.get_aligned_times(trial_numbers,
+    #                                         time_before_in_s=sec_pre_post, # sec before stim. change
+    #                                         time_after_in_s=sec_pre_post, # to sec after stim. change
+    #                                         event='stimChange')
+    # # Spikes
+    # all_spikes = session.spike_time_stamps
 
-    # Initialize Result Matrices
+    # # Initialize Result Matrices
 
-    mu_iti = np.ones((len(neuron_index),len(trial_times),2)) * sec_pre_post * 1000/min_nr_spikes # Filled with maximal measurable ITI
-    std_iti = np.zeros((len(neuron_index),len(trial_times),2))
+    # mu_iti = np.ones((len(neuron_index),len(trial_times),2)) * sec_pre_post * 1000/min_nr_spikes # Filled with maximal measurable ITI
+    # std_iti = np.zeros((len(neuron_index),len(trial_times),2))
 
-    # Neurons
-    for nn,n in enumerate(neuron_index):
-        unit_spikes = all_spikes[nn]
+    # # Neurons
+    # for nn,n in enumerate(neuron_index):
+    #     unit_spikes = all_spikes[nn]
 
-        # Trials
-        for tn, (trial_start, trial_stop) in enumerate(trial_times):
+    #     # Trials
+    #     for tn, (trial_start, trial_stop) in enumerate(trial_times):
 
-            # Trial
-            trial_spikes = unit_spikes[unit_spikes>=trial_start]
-            trial_spikes = trial_spikes[trial_spikes<=trial_stop]
-            trial_length = trial_stop - trial_start
-            trial_mid = trial_start + trial_length/2
+    #         # Trial
+    #         trial_spikes = unit_spikes[unit_spikes>=trial_start]
+    #         trial_spikes = trial_spikes[trial_spikes<=trial_stop]
+    #         trial_length = trial_stop - trial_start
+    #         trial_mid = trial_start + trial_length/2
 
-            # Before
-            before_stim = trial_spikes[trial_spikes<=trial_mid]
-            if len(before_stim)>min_nr_spikes:
-                mu_iti_before = np.mean(np.diff(before_stim)/1000)
-                std_iti_before = np.std(np.diff(before_stim)/1000)
-                mu_iti[nn,tn,0] = mu_iti_before
-                std_iti[nn,tn,0] = std_iti_before
+    #         # Before
+    #         before_stim = trial_spikes[trial_spikes<=trial_mid]
+    #         if len(before_stim)>min_nr_spikes:
+    #             mu_iti_before = np.mean(np.diff(before_stim)/1000)
+    #             std_iti_before = np.std(np.diff(before_stim)/1000)
+    #             mu_iti[nn,tn,0] = mu_iti_before
+    #             std_iti[nn,tn,0] = std_iti_before
 
-            # After
-            after_stim = trial_spikes[trial_spikes>=trial_mid]
-            if len(after_stim)>min_nr_spikes:
-                mu_iti_after = np.mean(np.diff(after_stim)/1000)
-                std_iti_after = np.std(np.diff(after_stim)/1000)
-                mu_iti[nn,tn,1] = mu_iti_after
-                std_iti[nn,tn,1] = std_iti_after
+    #         # After
+    #         after_stim = trial_spikes[trial_spikes>=trial_mid]
+    #         if len(after_stim)>min_nr_spikes:
+    #             mu_iti_after = np.mean(np.diff(after_stim)/1000)
+    #             std_iti_after = np.std(np.diff(after_stim)/1000)
+    #             mu_iti[nn,tn,1] = mu_iti_after
+    #             std_iti[nn,tn,1] = std_iti_after
 
-    # Per neuron
-    remove_till = 25
-    mu_iti = mu_iti[:,:remove_till]
-    std_iti = std_iti[:,:remove_till]
+    # # Per neuron
+    # remove_till = 25
+    # mu_iti = mu_iti[:,:remove_till]
+    # std_iti = std_iti[:,:remove_till]
 
-    # plt.subplot(211)
-    # plt.plot(mu_results[neuron].T,marker='o')
+    # # plt.subplot(211)
+    # # plt.plot(mu_results[neuron].T,marker='o')
 
-    # plt.subplot(212)
-    # plt.plot(mu_results[neuron],marker='o')
+    # # plt.subplot(212)
+    # # plt.plot(mu_results[neuron],marker='o')
 
-    # plt.show()
+    # # plt.show()
 
-    # Average across Trials
-    mu_iti_neurons = np.mean(mu_iti,axis=1)
-    std_iti_neurons = np.mean(std_iti,axis=1)
+    # # Average across Trials
+    # mu_iti_neurons = np.mean(mu_iti,axis=1)
+    # std_iti_neurons = np.mean(std_iti,axis=1)
 
-    # Finding Neuron parameters
-    # Initialize
-    mu_mem_neurons = np.zeros_like(mu_iti_neurons)
-    std_mem_neurons = np.zeros_like(std_iti_neurons)
-    loss = []
-    for neuron in range(len(neuron_index)):
-        print('ey')
-        for pre_post in range(2):
+    # # Finding Neuron parameters
+    # # Initialize
+    # mu_mem_neurons = np.zeros_like(mu_iti_neurons)
+    # std_mem_neurons = np.zeros_like(std_iti_neurons)
+    # loss = []
+    # for neuron in range(len(neuron_index)):
+    #     print('ey')
+    #     for pre_post in range(2):
 
-           mu_iti_to_fit = mu_iti_neurons[neuron,pre_post]
-           std_iti_to_fit = std_iti_neurons[neuron,pre_post]
+    #        mu_iti_to_fit = mu_iti_neurons[neuron,pre_post]
+    #        std_iti_to_fit = std_iti_neurons[neuron,pre_post]
 
-           result, history = find_params(sim_params, neuron_params, mu_iti_to_fit, std_iti_to_fit)
+    #        result, history = find_params(sim_params, neuron_params, mu_iti_to_fit, std_iti_to_fit)
 
-           mu_mem_neurons[neuron,pre_post] = result.x[0]
-           std_mem_neurons[neuron,pre_post] = result.x[1]
-           loss.append(result.fun)
+    #        mu_mem_neurons[neuron,pre_post] = result.x[0]
+    #        std_mem_neurons[neuron,pre_post] = result.x[1]
+    #        loss.append(result.fun)
 
-    print(mu_mem_neurons)
-    print(std_mem_neurons)
-    print(loss)
+    # print(mu_mem_neurons)
+    # print(std_mem_neurons)
+    # print(loss)
 
     # # Plot fit for single neuron
     # neuron = plot_params['single_neuron']
@@ -1351,89 +1345,103 @@ if __name__ == '__main__':
     #         plt.show()
 
 
-    # --- FANO factor ---
+    # --- Firing Rates ---
     # set time parameters
-    binsize_in_ms = 500
-    time_before_stim_in_s = 1
-    time_after_stim_in_s = 2
-    slide_by_in_ms = 10
+    binsize_in_ms = 1000
+    time_before_stim_in_s = 4
+    time_after_stim_in_s = 4
+    slide_by_in_ms = 50
     sliding_window = True
+    bin_to_fr = binsize_in_ms/1000
 
-    # select trials of a given type
-    trial_numbers = session.select_trials(only_correct=False,
-                                          trial_type='X', # visual
-                                          visual_change=3) # large visual change
+    sessions = select_sessions(dataset='ChangeDetectionConflict',
+                               area='PPC', min_units=10)
 
-    # getting beginning and end times for every trial aligned to stimulus change
-    trial_times = session.get_aligned_times(trial_numbers,
-                                            time_before_in_s=time_before_stim_in_s, # 1 sec before stim. change
-                                            time_after_in_s=time_after_stim_in_s, # to 2 sec after stim. change
-                                            event='stimChange')
+    for index, mouse in sessions.iterrows():
+        print(mouse['animal_id'])
+        print(mouse['session_id'])
+        print(mouse['layer'])
 
-    # require a certain minimum amount of trials
-    assert len(trial_times) > 10
+        animal_id = mouse['animal_id']
+        session_id = mouse['session_id']
+        dataset = 'ChangeDetectionConflict'
 
-    # binning spikes (e.g. with a 100 ms window advanced in 10ms time increments)
-    binned_spikes, spike_bin_centers = session.bin_spikes_per_trial(binsize_in_ms=binsize_in_ms,
-                                                                    trial_times=trial_times,
-                                                                    sliding_window=sliding_window,
-                                                                    slide_by_in_ms=slide_by_in_ms)
+        session = Session(dataset=dataset, animal_id=animal_id,
+                        session_id=session_id, subfolder='')
 
-    # get the time of each bin relative to stimulus onset
-    time_bin_times = (spike_bin_centers[0] - spike_bin_centers[0][0]).rescale(pq.s) + (binsize_in_ms * pq.ms).rescale(pq.s) / 2 - time_before_stim_in_s * pq.s
-    time_bin_times = time_bin_times.__array__().round(5)
+        session.load_data(load_lfp=False, use_newtrials=True)
 
-    # subselecting units from a given area with required quality metrics
-    # see select_units for other available selection criteria (e.g. coverage)
-    # and see session.spike_data.keys() for all the available unit metrics
-    neuron_index = session.select_units(area='PPC', layer=None,
-                                             min_isolation_distance=10,
-                                             max_perc_isi_spikes=0.1)
+        print(session)
+        session.get_session_overview_trials()
 
-    # # get the unique unit ID
-    # selected_unit_id = session.get_cell_id(selected_unit_ind, shortened_id=False)
+        # select trials of a given type
+        trial_numbers = session.select_trials(only_correct=False,
+                                            trial_type='X', # visual
+                                            visual_change=3) # large visual change
 
-    # # selecting the binned spike only of the selected units
-    # binned_spikes = [s[selected_unit_ind, :] for s in binned_spikes]
+        # getting beginning and end times for every trial aligned to stimulus change
+        trial_times = session.get_aligned_times(trial_numbers,
+                                                time_before_in_s=time_before_stim_in_s, # 1 sec before stim. change
+                                                time_after_in_s=time_after_stim_in_s, # to 2 sec after stim. change
+                                                event='stimChange')
 
-    # # make an empty array
-    # fano_arr = np.zeros(shape=(len(selected_unit_id), len(time_bin_times)))
+        # require a certain minimum amount of trials
+        assert len(trial_times) > 10
 
-    # # compute the fano factor for every unit and every time point
-    # for u, id in enumerate(selected_unit_id):
-    #     for t, time in enumerate(time_bin_times):
-    #         spikes = np.array([s[u, t] for s in binned_spikes])
-    #         fano_arr[u, t] = spikes.var() / spikes.mean()
+        # binning spikes (e.g. with a 100 ms window advanced in 10ms time increments)
+        binned_spikes, spike_bin_centers = session.bin_spikes_per_trial(binsize_in_ms=binsize_in_ms,
+                                                                        trial_times=trial_times,
+                                                                        sliding_window=sliding_window,
+                                                                        slide_by_in_ms=slide_by_in_ms)
 
-    # # average fano factor across units
-    # fano = fano_arr.mean(axis=0)
+        print(np.shape(binned_spikes))
 
-    # # plot the results
-    # f, ax = plt.subplots(1, 1, figsize=[3, 3])
-    # ax.plot(time_bin_times, fano)
-    # ax.axvline(0, c='grey', ls='--')
-    # sns.despine()
-    # ax.set_ylabel('Fano factor')
-    # ax.set_xlabel('Time [s]')
-    # plt.tight_layout()
+        # get the time of each bin relative to stimulus onset
+        time_bin_times = (spike_bin_centers[0] - spike_bin_centers[0][0]).rescale(pq.s) + (binsize_in_ms * pq.ms).rescale(pq.s) / 2 - time_before_stim_in_s * pq.s
+        time_bin_times = time_bin_times.__array__().round(5)
+
+        # subselecting units from a given area with required quality metrics
+        # see select_units for other available selection criteria (e.g. coverage)
+        # and see session.spike_data.keys() for all the available unit metrics
+        neuron_index = session.select_units(area='PPC', layer=None,
+                                                min_isolation_distance=10)
 
 
-    # # --- SELECTING SESSIONS ---
-    # # we can check whether in this session there was muscimol or optogenetic
-    # # stimulation by checking the fields
-    # session.session_data['MuscimolArea'] # if nan, no muscimol
-    # session.session_data['UseOpto'] # if 0, no opto
-    # session.session_data['PhotostimArea'] # area of opto stimulation
+        # get the unique unit ID
+        selected_unit_id = session.get_cell_id(neuron_index, shortened_id=False)
 
-    # # we can also use select_sessions to get all sessions with at least
-    # # one PPC unit
-    # sessions = select_sessions(dataset='ChangeDetectionConflict',
-    #                 area='PPC', min_units=1)
+        # selecting the binned spike only of the selected units
+        binned_spikes = [s[neuron_index, :] for s in binned_spikes]
 
-    # # or already exclude sessions which have muscimol or opto in PPC
-    # sessions_nomus_noopto = select_sessions(dataset='ChangeDetectionConflict',
-    #                         area='PPC', min_units=1, exclude_muscimol=True,
-    #                             exclude_opto=True)
+        print(np.shape(binned_spikes))
+        binned_spikes = np.average(binned_spikes,axis=0)
 
-    # plt.show()
-# %%
+        # Firing rates
+        binned_spikes = binned_spikes/bin_to_fr
+        print(np.shape(binned_spikes))
+
+
+        plt.plot(binned_spikes.T)
+        plt.show()
+
+        # # make an empty array
+        # fano_arr = np.zeros(shape=(len(selected_unit_id), len(time_bin_times)))
+
+        # # compute the fano factor for every unit and every time point
+        # for u, id in enumerate(selected_unit_id):
+        #     for t, time in enumerate(time_bin_times):
+        #         spikes = np.array([s[u, t] for s in binned_spikes])
+        #         fano_arr[u, t] = spikes.var() / spikes.mean()
+
+        # # average fano factor across units
+        # fano = fano_arr.mean(axis=0)
+
+        # # plot the results
+        # f, ax = plt.subplots(1, 1, figsize=[3, 3])
+        # ax.plot(time_bin_times, fano)
+        # ax.axvline(0, c='grey', ls='--')
+        # sns.despine()
+        # ax.set_ylabel('Fano factor')
+        # ax.set_xlabel('Time [s]')
+        # we can also use select_sessions to get all sessions with at least
+        # one PPC unit
