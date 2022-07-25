@@ -14,7 +14,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 def simulate(sim_params, neuron_params):
     """Simulate the firing rate of a neuron using the nest simulator."""
     # dt noise correction
-    Sigma = np.sqrt(2/(sim_params['dt_noise']*neuron_params['tau_m'])) * \
+    sigma = np.sqrt(2/(sim_params['dt_noise']*neuron_params['tau_m'])) * \
         neuron_params['C_m'] * sim_params['std_mem']
 
     # Simulation
@@ -29,7 +29,8 @@ def simulate(sim_params, neuron_params):
 
     # Noise
     noise = nest.Create("noise_generator")
-    noise.set({"std": Sigma, "dt": sim_params['dt_noise']})
+    noise.set({"mean": sim_params["mu"], "std": sigma,
+               "dt": sim_params['dt_noise']})
 
     # Spike Detector
     spikedetector = nest.Create("spike_recorder")
@@ -209,7 +210,6 @@ def f(inputs, sim_params, neuron_params, mu_sim, std_sim):
     # Instead of KL
     loss = (mu_sim - mu_theo)**2 + (std_sim - std_theo)**2
 
-
     return loss
 
 
@@ -230,12 +230,14 @@ def find_params(sim_params, neuron_params, mu_sim, std_sim):
 
     return result, history
 
-def plot_search(sim_params,neuron_params,plot_params,mu_sim, std_sim, result, history):
 
+def plot_search(sim_params, neuron_params, plot_params,
+                mu_sim, std_sim, result, history):
+    """Plot the path of the minimization."""
     # Result
     history = np.array(history)
-    mu_mem = result[0]
-    std_mem = result[1]
+    # mu_mem = result[0]
+    # std_mem = result[1]
 
     # Mean
     mu_lower = -120
@@ -246,24 +248,25 @@ def plot_search(sim_params,neuron_params,plot_params,mu_sim, std_sim, result, hi
     std_upper = 30
 
     # Grid
-    mus = np.arange(mu_upper,mu_lower,-plot_params['resolution'])
-    sigmas = np.arange(std_lower,std_upper,plot_params['resolution'])
+    mus = np.arange(mu_upper, mu_lower, -plot_params['resolution'])
+    sigmas = np.arange(std_lower, std_upper, plot_params['resolution'])
 
     # Loss Landscape
-    loss_landscape = np.zeros((len(mus), len(sigmas)))
+    loss_arr = np.zeros((len(mus), len(sigmas)))
     for ni, i in enumerate(mus):
         for nq, q in enumerate(sigmas):
-            loss_landscape[ni, nq] = f([i, q], sim_params, neuron_params, mu_sim, std_sim)
-    loss_landscape[loss_landscape > plot_params['max_loss']] = plot_params['max_loss']
+            loss_arr[ni, nq] = f([i, q], sim_params, neuron_params,
+                                 mu_sim, std_sim)
+    loss_arr[loss_arr > plot_params['max_loss']] = plot_params['max_loss']
 
     # %% Loss Plot
     # Plotting Loss
     fig, ax = plt.subplots()
-    im = ax.imshow(loss_landscape, cmap='bone_r', norm=colors.LogNorm(),
-                extent=[sigmas[0], sigmas[-1], mus[-1], mus[0]])
+    im = ax.imshow(loss_arr, cmap='bone_r', norm=colors.LogNorm(),
+                   extent=[sigmas[0], sigmas[-1], mus[-1], mus[0]])
 
-    xlabel= r'Membrane $\sigma$'
-    ylabel= r'Membrane $\mu$'
+    xlabel = r'Membrane $\sigma$'
+    ylabel = r'Membrane $\mu$'
     ax.set(xlabel=xlabel)
     ax.set(ylabel=ylabel)
 
@@ -306,37 +309,37 @@ if __name__ == "__main__":
 
     # Experiment Parameters
     exp_params = {'window_size': 10000,
-                'step_size': 100,
-                'stds': [20, 12],
-                'nr_windows': None}
+                  'step_size': 100,
+                  'stds': [20, 12],
+                  'nr_windows': None}
 
     # Simulation Parameters
     sim_params = {'dt_noise': 0.005,
-                'sim_res': 0.005,
-                'mean_mem': -65.0,
-                'std_mem': 20,
-                'simtime': 30000,
-                'seed': 18,
-                'neurons': 100,
-                'search_start': [-73, 20]}
+                  'sim_res': 0.005,
+                  'mean_mem': -65.0,
+                  'mu_I': 5,
+                  'std_mem': 20,
+                  'simtime': 30000,
+                  'seed': 18,
+                  'neurons': 100,
+                  'search_start': [-73, 20]}
 
     # Neuron Parameter
     neuron_params = {'C_m': 1.0,
-                    't_ref': 0.1,
-                    'V_reset': -65.0,
-                    'tau_m': 10.0,
-                    'V_th': -50.0,
-                    'E_L': -65.0}
+                     't_ref': 0.1,
+                     'V_reset': -65.0,
+                     'tau_m': 10.0,
+                     'V_th': -50.0,
+                     'E_L': -65.0}
 
     plot_params = {'resolution': 0.5,
-                    'mu_range': 10,
-                    'std_range': 10,
-                    'max_loss':5000}
+                   'mu_range': 10,
+                   'std_range': 10,
+                   'max_loss': 5000}
 
     # Theory vs Experiment
-    mu_sim, std_sim, cv_sim, mu_theo, std_theo, cv_theo = experiment(exp_params,
-                                                                    sim_params,
-                                                                    neuron_params)
+    mu_sim, std_sim, cv_sim, mu_theo, std_theo, cv_theo = experiment(
+        exp_params, sim_params, neuron_params)
 
     # # Find optimal solution
     for std in exp_params['stds']:
@@ -349,12 +352,13 @@ if __name__ == "__main__":
         std_sim_single = np.std(np.diff(ts))
 
         # Find Params
-        result, history = find_params(sim_params, neuron_params, mu_sim_single, std_sim_single)
+        result, history = find_params(sim_params, neuron_params, mu_sim_single,
+                                      std_sim_single)
         result = result.x
 
         # Plot Search
-        plot_search(sim_params, neuron_params, plot_params,mu_sim_single, std_sim_single, result, history)
-
+        plot_search(sim_params, neuron_params, plot_params, mu_sim_single,
+                    std_sim_single, result, history)
 
     # Plotting Theory vs Simulation
     simtime = sim_params['simtime']/1000
@@ -366,7 +370,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     for en, i in enumerate(exp_params['stds']):
         ax.hlines([exp_params['stds'][en]], simtime*en, simtime*(en+1),
-                  label=f'sigma {en}', color='darkslateblue',linewidth=4)
+                  label=f'sigma {en}', color='darkslateblue', linewidth=4)
     ax.set(ylabel=r'Membrane voltage $\sigma$', xlabel='Time (seconds)')
     ax.set_ylim(0, 30)
 
