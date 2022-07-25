@@ -29,7 +29,7 @@ def simulate(sim_params, neuron_params):
 
     # Noise
     noise = nest.Create("noise_generator")
-    noise.set({"mean": sim_params["mu"], "std": sigma,
+    noise.set({"mean": sim_params["mu_I"], "std": sigma,
                "dt": sim_params['dt_noise']})
 
     # Spike Detector
@@ -61,39 +61,6 @@ def simulate(sim_params, neuron_params):
 
     # Firing Rate
     return fr_sim, var_sim, ts, evs
-
-
-def theorize(sim_params, neuron_params):
-    """Calculate the theoretical firing rate and variance for a LIF neuron."""
-    # %% Firing Rate based on Brunel
-    def f(x): return np.exp(x**2) * (1 + scipy.special.erf(x))
-
-    # Outer Bounds
-    outer_top = (neuron_params["V_th"] - sim_params["mean_mem"]) / \
-        sim_params['std_mem'] / np.sqrt(2)
-    outer_bottom = (neuron_params["V_reset"] - sim_params['mean_mem']) / \
-        sim_params['std_mem'] / np.sqrt(2)
-
-    # Iti
-    integral = integrate.quad(f, outer_bottom, outer_top)
-    mu = neuron_params['t_ref'] + neuron_params['tau_m'] * np.sqrt(np.pi) * \
-        integral[0]
-
-    # %% Variance
-    def f(y, x): return np.exp(x**2) * np.exp(y**2) * \
-        (1 + scipy.special.erf(y))**2
-
-    # Inner Bounds
-    integral = integrate.dblquad(f, outer_bottom, outer_top,
-                                 lambda x: -5, lambda x: x)
-    #
-    var = 2 * np.pi * integral[0] * neuron_params['tau_m']**2
-    std = np.sqrt(var)
-
-    # CV
-    cv = std/mu
-
-    return mu, std, cv
 
 
 def compute_statistics(sim_params, exp_params, ts, evs):
@@ -139,6 +106,39 @@ def compute_statistics(sim_params, exp_params, ts, evs):
 
     # CV
     cv = std / mu
+
+    return mu, std, cv
+
+
+def theorize(sim_params, neuron_params):
+    """Calculate the theoretical firing rate and variance for a LIF neuron."""
+    # %% Firing Rate based on Brunel
+    def f(x): return np.exp(x**2) * (1 + scipy.special.erf(x))
+
+    # Outer Bounds
+    outer_top = (neuron_params["V_th"] - sim_params["mean_mem"]) / \
+        sim_params['std_mem'] / np.sqrt(2)
+    outer_bottom = (neuron_params["V_reset"] - sim_params['mean_mem']) / \
+        sim_params['std_mem'] / np.sqrt(2)
+
+    # Iti
+    integral = integrate.quad(f, outer_bottom, outer_top)
+    mu = neuron_params['t_ref'] + neuron_params['tau_m'] * np.sqrt(np.pi) * \
+        integral[0]
+
+    # %% Variance
+    def f(y, x): return np.exp(x**2) * np.exp(y**2) * \
+        (1 + scipy.special.erf(y))**2
+
+    # Inner Bounds
+    integral = integrate.dblquad(f, outer_bottom, outer_top,
+                                 lambda x: -5, lambda x: x)
+    #
+    var = 2 * np.pi * integral[0] * neuron_params['tau_m']**2
+    std = np.sqrt(var)
+
+    # CV
+    cv = std/mu
 
     return mu, std, cv
 
@@ -314,10 +314,10 @@ if __name__ == "__main__":
                   'nr_windows': None}
 
     # Simulation Parameters
-    sim_params = {'dt_noise': 0.005,
-                  'sim_res': 0.005,
+    sim_params = {'dt_noise': 0.05,
+                  'sim_res': 0.05,
                   'mean_mem': -65.0,
-                  'mu_I': 5,
+                  'mu_I': 0,
                   'std_mem': 20,
                   'simtime': 30000,
                   'seed': 18,
